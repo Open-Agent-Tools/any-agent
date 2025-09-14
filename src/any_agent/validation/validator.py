@@ -3,7 +3,14 @@
 import json
 from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass
-from jsonschema import validate, ValidationError
+
+try:
+    from jsonschema import validate, ValidationError
+    JSONSCHEMA_AVAILABLE = True
+except ImportError:
+    validate = None
+    ValidationError = None
+    JSONSCHEMA_AVAILABLE = False
 
 
 @dataclass
@@ -72,6 +79,10 @@ class JSONRPCValidator:
         errors: List[str] = []
         warnings: List[str] = []
 
+        if not JSONSCHEMA_AVAILABLE:
+            errors.append("jsonschema not available - install with: pip install jsonschema")
+            return ValidationResult(is_valid=False, errors=errors, warnings=warnings)
+
         try:
             validate(instance=message, schema=self.REQUEST_SCHEMA)
         except ValidationError as e:
@@ -89,6 +100,10 @@ class JSONRPCValidator:
         """Validate JSON-RPC 2.0 response message."""
         errors: List[str] = []
         warnings: List[str] = []
+
+        if not JSONSCHEMA_AVAILABLE:
+            errors.append("jsonschema not available - install with: pip install jsonschema")
+            return ValidationResult(is_valid=False, errors=errors, warnings=warnings)
 
         try:
             validate(instance=message, schema=self.RESPONSE_SCHEMA)
@@ -108,6 +123,10 @@ class JSONRPCValidator:
         errors: List[str] = []
         warnings: List[str] = []
 
+        if not JSONSCHEMA_AVAILABLE:
+            errors.append("jsonschema not available - install with: pip install jsonschema")
+            return ValidationResult(is_valid=False, errors=errors, warnings=warnings)
+
         try:
             validate(instance=message, schema=self.NOTIFICATION_SCHEMA)
         except ValidationError as e:
@@ -125,6 +144,10 @@ class JSONRPCValidator:
         """Validate any JSON-RPC 2.0 message (auto-detect type)."""
         errors: List[str] = []
         warnings: List[str] = []
+
+        if not JSONSCHEMA_AVAILABLE:
+            errors.append("jsonschema not available - install with: pip install jsonschema")
+            return ValidationResult(is_valid=False, errors=errors, warnings=warnings)
 
         # Parse JSON if string
         if isinstance(message, str):
