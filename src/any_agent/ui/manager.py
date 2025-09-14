@@ -42,7 +42,9 @@ class UIBuildManager:
                 logger.info("PyPI installation detected - using pre-built UI assets")
                 return False
             else:
-                logger.warning("PyPI installation detected but no pre-built UI assets found")
+                logger.warning(
+                    "PyPI installation detected but no pre-built UI assets found"
+                )
                 return False
 
         if force_rebuild:
@@ -61,14 +63,18 @@ class UIBuildManager:
         # Check if this is a PyPI installation
         if self.is_pypi_installation():
             if self.is_ui_built():
-                logger.info("PyPI installation detected - using existing pre-built UI assets")
+                logger.info(
+                    "PyPI installation detected - using existing pre-built UI assets"
+                )
                 return {
                     "success": True,
                     "message": "Using pre-built UI assets from PyPI package",
                     "dist_dir": str(self.dist_dir),
                 }
             else:
-                logger.error("PyPI installation detected but no pre-built UI assets found")
+                logger.error(
+                    "PyPI installation detected but no pre-built UI assets found"
+                )
                 return {
                     "success": False,
                     "error": "No pre-built UI assets available in PyPI installation",

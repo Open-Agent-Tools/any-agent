@@ -14,7 +14,7 @@ uality requirements:
 
 Any Agent is a universal AI agent containerization framework that automatically wraps AI agents from any framework (Google ADK, AWS Strands, LangChain, etc.) into standardized, A2A protocol-compliant Docker containers with modern React SPA interfaces. The system provides consistent APIs and session isolation regardless of the underlying agent implementation.
 
-**Current Status**: Fully functional with Google ADK and AWS Strands frameworks, 326/327 tests passing, zero critical issues. Complete A2A chat session cleanup implementation (WOB-174).
+**Current Status**: Published to PyPI as `any-agent-wrapper` v0.1.1. Fully functional with Google ADK and AWS Strands frameworks, core tests passing, zero critical issues. Complete PyPI publishing pipeline with automated releases.
 
 ## Architecture
 
