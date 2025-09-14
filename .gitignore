@@ -1,0 +1,292 @@
+# Any Agent Framework - Git Ignore File
+
+# =============================================================================
+# Environment & Secrets
+# =============================================================================
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+secrets/
+credentials/
+
+# =============================================================================
+# Python
+# =============================================================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+junit.xml
+
+# Virtual environments
+.env/
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.uv/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# =============================================================================
+# Docker
+# =============================================================================
+# Docker build contexts
+.dockerignore
+Dockerfile.build
+docker-compose.override.yml
+.docker/
+
+# Container logs
+*.log
+
+# Docker volumes
+docker/volumes/
+docker/data/
+
+# =============================================================================
+# IDEs & Editors
+# =============================================================================
+# VSCode
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# PyCharm
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Cursor
+.cursor/
+
+# =============================================================================
+# Operating System
+# =============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.tmp
+*.temp
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# =============================================================================
+# Logs & Databases
+# =============================================================================
+logs/
+*.log
+log/
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+
+# =============================================================================
+# Generated Files & Build Artifacts
+# =============================================================================
+# Any Agent generated files
+generated/
+output/
+builds/
+dist/
+*.tar.gz
+*.zip
+
+# Docker build artifacts
+*.dockerfile
+Dockerfile.generated
+docker-compose.generated.yml
+
+# Agent containers
+agents/*/Dockerfile
+agents/*/docker-compose.yml
+agents/*/.dockerignore
+
+# Configuration files (generated)
+config/generated/
+*.generated.yaml
+*.generated.yml
+*.generated.json
+
+# =============================================================================
+# Temporary & Cache
+# =============================================================================
+tmp/
+temp/
+.tmp/
+.temp/
+cache/
+.cache/
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+*.ipynb
+
+# =============================================================================
+# Any Agent Specific
+# =============================================================================
+# Framework detection cache
+.framework_cache/
+.detection_cache/
+
+# Container build contexts
+.container_build/
+.build_context/
+
+# Agent metadata cache
+.agent_metadata/
+.adapter_cache/
+
+# Testing artifacts
+test_output/
+test_containers/
+test_agents/
+
+# Helmsman integration
+.helmsman_cache/
+helmsman_tokens/
+
+# Google ADK evaluation history and cache
+**/.adk/
+.adk/
+*.evalset_result.json
+
+# =============================================================================
+# Documentation
+# =============================================================================
+# Generated docs
+docs/_build/
+docs/build/
+site/
+
+# =============================================================================
+# Backup files
+# =============================================================================
+*.bak
+*.backup
+*.old
+*.orig
+
+# =============================================================================
+# Runtime files
+# =============================================================================
+*.pid
+*.lock
+.run/

@@ -1,0 +1,5 @@
+# AWS Strands Agent Dependencies
+strands-agents
+strands-agents-tools
+python-dotenv
+anthropic

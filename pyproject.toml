@@ -1,0 +1,172 @@
+[project]
+name = "any-agent"
+version = "0.1.0"
+description = "Universal AI Agent Containerization Framework"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "Any Agent", email = "contact@any-agent.org"},
+]
+maintainers = [
+    {name = "Any Agent", email = "contact@any-agent.org"},
+]
+homepage = "https://github.com/Open-Agent-Tools/any-agent"
+repository = "https://github.com/Open-Agent-Tools/any-agent"
+documentation = "https://github.com/Open-Agent-Tools/any-agent#readme"
+keywords = ["ai", "agent", "containerization", "docker", "framework", "a2a", "automation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: System :: Distributed Computing",
+    "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
+]
+dependencies = [
+    "fastapi>=0.104.1",
+    "uvicorn>=0.24.0",
+    "pydantic>=2.5.0",
+    "psutil>=5.9.6",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.25.0",
+    "aiofiles>=23.0.0",
+    "click>=8.0.0",
+    "pyyaml>=6.0.0",
+    "docker>=6.0.0",
+    "requests>=2.31.0",
+    "watchdog>=3.0.0",
+]
+
+[project.scripts]
+any-agent = "any_agent.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=6.2.1",
+    "mypy>=1.0.0",
+    "ruff>=0.1.0",
+    "black>=23.0.0",
+]
+google-adk = [
+    "google-adk[a2a]",
+    "a2a-sdk>=0.1.0",
+]
+aws-strands = [
+    "strands-agents",
+    "strands-agents-tools", 
+    "anthropic",
+    "a2a-sdk>=0.1.0",
+]
+langchain = [
+    "langchain>=0.1.0",
+    "langchain-community>=0.0.20",
+    "a2a-sdk>=0.1.0",
+]
+all-frameworks = [
+    "google-adk[a2a]",
+    "strands-agents",
+    "strands-agents-tools",
+    "anthropic",
+    "langchain>=0.1.0",
+    "langchain-community>=0.0.20",
+    "a2a-sdk>=0.1.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/any_agent"]
+exclude = [
+    "src/any_agent/ui/node_modules/",
+    "src/any_agent/ui/src/",
+    "src/any_agent/ui/package*.json",
+    "src/any_agent/ui/tsconfig*.json", 
+    "src/any_agent/ui/vite.config.ts",
+    "src/any_agent/ui/.eslintrc.cjs",
+    "src/any_agent/ui/.gitignore",
+    "src/any_agent/ui/.env.example",
+    "src/any_agent/ui/README.md",
+    "**/__pycache__",
+    "**/*.pyc",
+    "**/*.pyo",
+    "**/.pytest_cache",
+    "**/.mypy_cache",
+    "**/.ruff_cache",
+]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "src/any_agent/ui/node_modules/",
+    "**/__pycache__",
+    "**/*.pyc", 
+    "**/*.pyo",
+    "**/.pytest_cache",
+    "**/.mypy_cache",
+    "**/.ruff_cache",
+    ".env",
+    ".venv/",
+    "dist/",
+    "build/",
+    "examples/",
+    "tests/",
+    "docs/",
+    "PRD/",
+    "tmp/",
+    ".git/",
+    ".github/",
+    ".idea/",
+]
+
+[tool.hatch.build.targets.sdist.force-include]
+"src/any_agent/ui/dist" = "src/any_agent/ui/dist"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "mypy>=1.0.0",
+    "ruff>=0.1.0",
+    "black>=23.0.0",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py38"
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+follow_imports = "skip"
+disallow_untyped_calls = false
+disallow_untyped_defs = false
+check_untyped_defs = false
+warn_return_any = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+markers = [
+    "integration: marks tests as integration tests (require external services)",
+]
+
+[dependency-groups]
+dev = [
+    "types-docker>=7.1.0.20241229",
+    "types-jsonschema>=4.23.0.20241208",
+    "types-pyyaml>=6.0.12.20241230",
+    "types-requests>=2.32.0.20241016",
+]

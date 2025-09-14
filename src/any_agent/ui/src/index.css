@@ -1,0 +1,80 @@
+/* Global styles for Any Agent React UI */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  font-family: 'Roboto', sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: 'Roboto', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #ffffff;
+  color: #212529;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Ensure Material-UI components inherit font family */
+.MuiTypography-root,
+.MuiButton-root,
+.MuiTextField-root,
+.MuiInputBase-root {
+  font-family: 'Roboto', sans-serif !important;
+}
+
+/* Code and monospace elements */
+code,
+.MuiChip-root,
+pre {
+  font-family: 'Roboto Mono', monospace !important;
+}
+
+/* Scrollbar styling for webkit browsers */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f8f9fa;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #6c757d;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #495057;
+}
+
+/* Ensure links in code blocks are styled properly */
+code a {
+  color: #1f4788;
+  text-decoration: none;
+  border-bottom: 1px dotted #1f4788;
+}
+
+code a:hover {
+  color: #3f67a8;
+  border-bottom-color: #3f67a8;
+}
+
+/* Print styles */
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+}
