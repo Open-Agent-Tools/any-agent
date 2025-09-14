@@ -8,6 +8,8 @@ This is built for the homelab crew who are working across multiple frameworks an
 
 This project enables developers to take any local AI agent (regardless of underlying framework) and automatically wrap it in a Docker container with consistent, standardized API endpoints. The wrapper obfuscates and decouples users from the underlying agent implementation while exposing protocol-compliant interfaces including A2A, OpenAI-compatible APIs, and custom protocols.
 
+![any-agent-UI.png](docs/any-agent-UI.png)
+
 ## Features
 
 - **Framework Agnostic**: Automatically detects and adapts to different AI agent frameworks
