@@ -47,14 +47,28 @@ This project enables developers to take any local AI agent (regardless of underl
 
 ## Installation
 
-After cloning the repository:
+### From PyPI (Recommended)
 
 ```bash
-# Run the installation script (macOS/Linux/Windows)
-./install.sh
+# Install the package
+pip install any-agent-wrapper
 
 # Verify installation
 any-agent --help
+```
+
+### From Source
+
+After cloning the repository:
+
+```bash
+# Install dependencies using uv (preferred) or pip
+uv sync
+# or
+pip install -e ".[dev]"
+
+# Verify installation
+python -m any_agent --help
 ```
 
 ## Quick Start
@@ -63,14 +77,13 @@ any-agent --help
 # Basic usage - auto-detect and containerize
 any-agent ./my_agent/
 
-# Advanced usage with specific options  
+# Advanced usage with specific options
 any-agent ./super_cool_agent --framework adk --port 3081
 
-# Production deployment with Helmsman registration
+# Production deployment with container registry push
 any-agent ./agent/ \
   --config prod.yaml \
   --push registry.com/my-agent:v1.0 \
-  --helmsman \
   --agent-name my-agent-prod
 
 # UI-specific commands
@@ -87,14 +100,10 @@ All wrapped agents expose standardized endpoints:
 
 **Core Endpoints:**
 - `GET /health` - Health check and status
-- `GET /docs` - Agent documentation and capabilities
-- `GET /metrics` - Performance and usage metrics
+- `GET /.well-known/agent-card.json` - Agent discovery and metadata
 
 **Protocol Endpoints:**
 - `POST /message:send` - A2A protocol messaging
-- `POST /v1/chat/completions` - OpenAI-compatible chat API
-- `POST /invoke` - Direct agent invocation
-- `WebSocket /ws` - Real-time streaming (optional)
 
 ## Architecture
 
@@ -165,7 +174,6 @@ AWS_REGION=us-east-1
 ```bash
 AGENT_PORT=8080
 MCP_SERVER_URL=http://localhost:7081/mcp
-HELMSMAN_URL=http://localhost:7080/api
 ```
 
 ## 🚀 Status (September 2025)
