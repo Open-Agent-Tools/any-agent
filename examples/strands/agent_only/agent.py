@@ -25,7 +25,7 @@ model = AnthropicModel(
     max_tokens=1024,
     params={
         "temperature": 0.7,
-    }
+    },
 )
 
 # Create the root agent
@@ -37,19 +37,21 @@ root_agent = Agent(
         "You are the 'Minimal Strands Agent', a helpful AI assistant built using AWS Strands framework. "
         "When introducing yourself, identify as the 'Minimal Strands Agent' rather than Claude. "
         "You can engage in conversations and answer questions to the best of your ability."
-    )
+    ),
 )
+
 
 # Simple test function for local execution
 def main():
     """Simple test function to verify the agent works."""
     print("Testing Minimal Strands Agent...")
-    
+
     try:
         response = root_agent("Hello! Please introduce yourself.")
         print(f"Agent Response: {response}")
     except Exception as e:
         print(f"Error: {e}")
+
 
 if __name__ == "__main__":
     main()

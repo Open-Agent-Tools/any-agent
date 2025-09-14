@@ -2,7 +2,6 @@
 
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
-from typing import Dict, Any
 
 from any_agent.api.chat_handler import A2AChatHandler, ChatMessage, ChatSession
 
@@ -14,10 +13,9 @@ class TestA2AChatHandler:
     def mock_a2a_client(self):
         """Create mock A2A client."""
         mock_client = Mock()
-        mock_client.get_agent_info = AsyncMock(return_value={
-            "name": "Test Agent",
-            "status": "active"
-        })
+        mock_client.get_agent_info = AsyncMock(
+            return_value={"name": "Test Agent", "status": "active"}
+        )
         mock_client.send_message = AsyncMock(return_value=["Test response"])
         mock_client.cleanup_session = Mock()
         return mock_client
@@ -25,7 +23,9 @@ class TestA2AChatHandler:
     @pytest.fixture
     def chat_handler(self, mock_a2a_client):
         """Create chat handler with mocked A2A client."""
-        with patch('any_agent.api.chat_handler.A2AChatHandler._create_a2a_client') as mock_create:
+        with patch(
+            "any_agent.api.chat_handler.A2AChatHandler._create_a2a_client"
+        ) as mock_create:
             mock_create.return_value = mock_a2a_client
             handler = A2AChatHandler(timeout=30)
             return handler
@@ -35,7 +35,7 @@ class TestA2AChatHandler:
         # Setup: Create a session
         session_id = "test_session_123"
         agent_url = "http://localhost:8080"
-        
+
         session = ChatSession(
             session_id=session_id,
             agent_url=agent_url,
@@ -46,9 +46,9 @@ class TestA2AChatHandler:
                     id="msg_1",
                     content="Hello",
                     sender="user",
-                    timestamp="2024-01-01T00:00:00"
+                    timestamp="2024-01-01T00:00:00",
                 )
-            ]
+            ],
         )
         chat_handler.sessions[session_id] = session
 
@@ -68,7 +68,7 @@ class TestA2AChatHandler:
     def test_cleanup_session_not_found(self, chat_handler):
         """Test cleanup of non-existent session."""
         session_id = "nonexistent_session"
-        
+
         # Execute: Cleanup non-existent session
         result = chat_handler.cleanup_session(session_id)
 
@@ -82,15 +82,15 @@ class TestA2AChatHandler:
         # Setup: Create session and mock A2A client failure
         session_id = "test_session_456"
         agent_url = "http://localhost:8080"
-        
+
         session = ChatSession(
             session_id=session_id,
             agent_url=agent_url,
             agent_name="Test Agent",
-            is_connected=True
+            is_connected=True,
         )
         chat_handler.sessions[session_id] = session
-        
+
         # Mock A2A client cleanup to raise exception
         mock_a2a_client.cleanup_session.side_effect = Exception("A2A cleanup failed")
 
@@ -102,17 +102,19 @@ class TestA2AChatHandler:
         assert result["session_id"] == session_id
         assert session_id not in chat_handler.sessions
 
-    def test_cleanup_session_no_a2a_client_cleanup_method(self, chat_handler, mock_a2a_client):
+    def test_cleanup_session_no_a2a_client_cleanup_method(
+        self, chat_handler, mock_a2a_client
+    ):
         """Test cleanup when A2A client doesn't have cleanup method."""
         # Setup: Remove cleanup method from mock client
-        delattr(mock_a2a_client, 'cleanup_session')
-        
+        delattr(mock_a2a_client, "cleanup_session")
+
         session_id = "test_session_789"
         session = ChatSession(
             session_id=session_id,
             agent_url="http://localhost:8080",
             agent_name="Test Agent",
-            is_connected=True
+            is_connected=True,
         )
         chat_handler.sessions[session_id] = session
 
@@ -127,7 +129,9 @@ class TestA2AChatHandler:
         """Test cleanup when general error occurs."""
         # Setup: Force an error by corrupting session data
         session_id = "error_session"
-        chat_handler.sessions[session_id] = "invalid_session_data"  # Not a ChatSession object
+        chat_handler.sessions[session_id] = (
+            "invalid_session_data"  # Not a ChatSession object
+        )
 
         # Execute: Cleanup session
         result = chat_handler.cleanup_session(session_id)
@@ -172,7 +176,7 @@ class TestA2AChatHandler:
         assert len(chat_handler.sessions) == 1
         assert session_id_2 in chat_handler.sessions
         session_2 = chat_handler.sessions[session_id_2]
-        
+
         # Should have user message + agent response
         assert len(session_2.messages) >= 2
 
@@ -197,9 +201,9 @@ class TestA2AChatHandler:
                         id=f"msg_{session_id}",
                         content=context,
                         sender="user",
-                        timestamp="2024-01-01T00:00:00"
+                        timestamp="2024-01-01T00:00:00",
                     )
-                ]
+                ],
             )
             chat_handler.sessions[session_id] = session
 
@@ -236,7 +240,7 @@ class TestChatMessage:
             content="Hello, world!",
             sender="user",
             timestamp="2024-01-01T00:00:00",
-            message_type="text"
+            message_type="text",
         )
 
         assert message.id == "test_msg_1"
@@ -251,7 +255,7 @@ class TestChatMessage:
             id="test_msg_2",
             content="Error occurred",
             sender="agent",
-            timestamp="2024-01-01T00:00:00"
+            timestamp="2024-01-01T00:00:00",
         )
 
         assert message.message_type == "text"  # Default value
@@ -267,7 +271,7 @@ class TestChatSession:
             agent_url="http://localhost:8080",
             agent_name="Test Agent",
             is_connected=True,
-            messages=[]
+            messages=[],
         )
 
         assert session.session_id == "test_session"
@@ -279,8 +283,7 @@ class TestChatSession:
     def test_chat_session_default_values(self):
         """Test ChatSession with default values."""
         session = ChatSession(
-            session_id="minimal_session",
-            agent_url="http://localhost:8080"
+            session_id="minimal_session", agent_url="http://localhost:8080"
         )
 
         assert session.agent_name is None

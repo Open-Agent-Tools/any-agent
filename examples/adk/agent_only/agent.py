@@ -1,7 +1,7 @@
 """Generic MCP Test Agent Configuration.
 
 This module configures a standalone test agent for verifying MCP server
-connectivity and functionality. It can connect to any MCP server that 
+connectivity and functionality. It can connect to any MCP server that
 implements the Model Context Protocol.
 """
 
@@ -21,7 +21,9 @@ from dotenv import load_dotenv
 try:
     from basic_open_agent_tools import load_all_datetime_tools
 except ImportError:
-    print("Warning: basic_open_agent_tools not available, datetime tools will not be loaded")
+    print(
+        "Warning: basic_open_agent_tools not available, datetime tools will not be loaded"
+    )
     load_all_datetime_tools = lambda: []
 
 # Initialize environment and logging
@@ -62,7 +64,7 @@ def create_agent() -> Agent:
 
     # Translate MCP server URL for Docker environment
     docker_mcp_url = translate_docker_url(MCP_SERVER_URL)
-    
+
     # Try to include MCP tools with Docker URL translation
     agent_tools = date_tools
     try:
@@ -74,9 +76,13 @@ def create_agent() -> Agent:
             ),
         ]
         agent_tools = mcp_toolset + date_tools
-        print(f"Successfully configured MCP tools for {docker_mcp_url} (translated from {MCP_SERVER_URL})")
+        print(
+            f"Successfully configured MCP tools for {docker_mcp_url} (translated from {MCP_SERVER_URL})"
+        )
     except Exception as e:
-        print(f"Warning: Could not configure MCP tools for {docker_mcp_url}: {e}, using basic tools only")
+        print(
+            f"Warning: Could not configure MCP tools for {docker_mcp_url}: {e}, using basic tools only"
+        )
 
     return Agent(
         model=GOOGLE_MODEL,
