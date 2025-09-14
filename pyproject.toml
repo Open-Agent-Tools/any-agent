@@ -1,28 +1,22 @@
 [project]
 name = "any-agent-wrapper"
-version = "0.1.4"
+version = "0.1.5"
 description = "Universal framework for containerizing AI agents from any framework (Google ADK, AWS Strands, LangChain) into standardized Docker containers with A2A protocol support"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
 authors = [
-    {name = "Any Agent", email = "contact@any-agent.org"},
+    {name = "Wes Etheredge", url = "https://github.com/jwesleye"},
 ]
 maintainers = [
-    {name = "Any Agent", email = "contact@any-agent.org"},
+    {name = "Wes Etheredge", url = "https://github.com/jwesleye"},
 ]
-[project.urls]
-Homepage = "https://github.com/Open-Agent-Tools/any-agent"
-Repository = "https://github.com/Open-Agent-Tools/any-agent"
-Documentation = "https://github.com/Open-Agent-Tools/any-agent#readme"
-"Bug Tracker" = "https://github.com/Open-Agent-Tools/any-agent/issues"
-Changelog = "https://github.com/Open-Agent-Tools/any-agent/releases"
-"Source Code" = "https://github.com/Open-Agent-Tools/any-agent"
 keywords = [
     "ai", "agent", "containerization", "docker", "framework", "a2a", "automation",
     "llm", "api", "protocol", "microservices", "google-adk", "aws-strands",
     "langchain", "fastapi", "rest-api", "agent-framework", "llm-framework"
 ]
+
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
@@ -44,6 +38,7 @@ classifiers = [
     "Topic :: System :: Systems Administration",
     "Typing :: Typed",
 ]
+
 dependencies = [
     "fastapi>=0.104.1",
     "uvicorn>=0.24.0",
@@ -59,6 +54,14 @@ dependencies = [
     "watchdog>=3.0.0",
     "jsonschema>=4.25.1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Open-Agent-Tools/any-agent"
+Repository = "https://github.com/Open-Agent-Tools/any-agent"
+Documentation = "https://github.com/Open-Agent-Tools/any-agent#readme"
+"Bug Tracker" = "https://github.com/Open-Agent-Tools/any-agent/issues"
+Changelog = "https://github.com/Open-Agent-Tools/any-agent/releases"
+"Source Code" = "https://github.com/Open-Agent-Tools/any-agent"
 
 [project.scripts]
 any-agent = "any_agent.cli:main"

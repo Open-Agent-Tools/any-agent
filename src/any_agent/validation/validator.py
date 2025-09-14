@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 try:
     from jsonschema import validate, ValidationError
+
     JSONSCHEMA_AVAILABLE = True
 except ImportError:
     validate = None
@@ -80,7 +81,9 @@ class JSONRPCValidator:
         warnings: List[str] = []
 
         if not JSONSCHEMA_AVAILABLE:
-            errors.append("jsonschema not available - install with: pip install jsonschema")
+            errors.append(
+                "jsonschema not available - install with: pip install jsonschema"
+            )
             return ValidationResult(is_valid=False, errors=errors, warnings=warnings)
 
         try:
@@ -102,7 +105,9 @@ class JSONRPCValidator:
         warnings: List[str] = []
 
         if not JSONSCHEMA_AVAILABLE:
-            errors.append("jsonschema not available - install with: pip install jsonschema")
+            errors.append(
+                "jsonschema not available - install with: pip install jsonschema"
+            )
             return ValidationResult(is_valid=False, errors=errors, warnings=warnings)
 
         try:
@@ -124,7 +129,9 @@ class JSONRPCValidator:
         warnings: List[str] = []
 
         if not JSONSCHEMA_AVAILABLE:
-            errors.append("jsonschema not available - install with: pip install jsonschema")
+            errors.append(
+                "jsonschema not available - install with: pip install jsonschema"
+            )
             return ValidationResult(is_valid=False, errors=errors, warnings=warnings)
 
         try:
@@ -146,7 +153,9 @@ class JSONRPCValidator:
         warnings: List[str] = []
 
         if not JSONSCHEMA_AVAILABLE:
-            errors.append("jsonschema not available - install with: pip install jsonschema")
+            errors.append(
+                "jsonschema not available - install with: pip install jsonschema"
+            )
             return ValidationResult(is_valid=False, errors=errors, warnings=warnings)
 
         # Parse JSON if string

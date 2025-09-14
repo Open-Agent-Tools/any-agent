@@ -4,6 +4,6 @@ A Python framework for automatically containerizing AI agents from any framework
 into standardized, protocol-compliant Docker containers.
 """
 
-__version__ = "0.1.4"
-__author__ = "Any Agent Team"
+__version__ = "0.1.5"
+__author__ = "Wes Etheredge"
 __description__ = "Universal AI Agent Containerization Framework"
