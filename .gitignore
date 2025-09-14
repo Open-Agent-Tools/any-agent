@@ -234,6 +234,7 @@ temp/
 .temp/
 cache/
 .cache/
+.ruff_cache/
 
 # Jupyter Notebooks
 .ipynb_checkpoints
