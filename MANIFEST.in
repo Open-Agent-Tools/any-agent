@@ -1,0 +1,13 @@
+include README.md
+include LICENSE
+include pyproject.toml
+recursive-include src/any_agent/ui/dist *
+recursive-exclude src/any_agent/ui/node_modules *
+recursive-exclude src/any_agent/ui/src *
+exclude src/any_agent/ui/package*.json
+exclude src/any_agent/ui/tsconfig*.json
+exclude src/any_agent/ui/vite.config.ts
+exclude src/any_agent/ui/.eslintrc.cjs
+exclude src/any_agent/ui/.gitignore
+exclude src/any_agent/ui/.env.example
+exclude src/any_agent/ui/README.md

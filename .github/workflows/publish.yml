@@ -1,0 +1,48 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/any-agent
+    permissions:
+      id-token: write
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "18"
+        cache: "npm"
+        cache-dependency-path: "src/any_agent/ui/package-lock.json"
+
+    - name: Build UI assets
+      run: |
+        cd src/any_agent/ui
+        npm ci
+        npm run build
+
+    - name: Build package
+      run: |
+        uv build
+
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        skip-existing: true
