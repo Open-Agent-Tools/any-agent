@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/any-agent
+      url: https://pypi.org/p/any-agent-wrapper
     permissions:
       id-token: write
 

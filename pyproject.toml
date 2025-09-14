@@ -1,5 +1,5 @@
 [project]
-name = "any-agent"
+name = "any-agent-wrapper"
 version = "0.1.0"
 description = "Universal AI Agent Containerization Framework"
 readme = "README.md"
