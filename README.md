@@ -200,18 +200,14 @@ HELMSMAN_URL=http://localhost:7080/api
 - **Progress Tracking** - Real-time upload progress with resumable transfers for large files
 
 ### Universal Evaluation Framework
-- **Multi-Framework Benchmarking** - Standardized evaluation metrics across all supported frameworks
-- **Performance Comparison** - Head-to-head agent performance analysis with detailed reporting
-- **Custom Evaluation Pipelines** - Plugin architecture for domain-specific evaluation criteria
-- **Automated Testing** - Continuous evaluation integration with CI/CD pipelines
+- **Agent Performance Validation** - Verify LLM and agent behavior meets expected performance criteria
+- **Cross-Framework Benchmarking** - Standardized evaluation metrics to compare agent performance across different frameworks
+- **Quality Assurance Testing** - Automated validation of agent responses, accuracy, and reliability
+- **Custom Evaluation Pipelines** - Framework for domain-specific evaluation criteria and success metrics
+- **Continuous Monitoring** - Real-time performance tracking and regression detection for deployed agents
 
 ### Canvas Integration
 - **Visual Agent Interfaces** - Rich canvas-based interfaces for agents that work with visual content, diagrams, and interactive elements
 - **Real-Time Collaboration** - Multi-user canvas sessions with agent interaction capabilities
 - **Export & Integration** - Canvas content export to various formats with agent-generated annotations
 - **Framework Bridge** - Seamless integration between canvas interactions and underlying agent frameworks
-
-### Enhanced Developer Experience
-- **Hot Reload Development** - Live agent updates without container rebuilds during development
-- **Enhanced Debugging** - Advanced logging, tracing, and debugging tools across all frameworks
-- **Plugin Marketplace** - Community-driven extensions and adapters for specialized use cases
