@@ -11,9 +11,11 @@ authors = [
 maintainers = [
     {name = "Any Agent", email = "contact@any-agent.org"},
 ]
-homepage = "https://github.com/Open-Agent-Tools/any-agent"
-repository = "https://github.com/Open-Agent-Tools/any-agent"
-documentation = "https://github.com/Open-Agent-Tools/any-agent#readme"
+[project.urls]
+Homepage = "https://github.com/Open-Agent-Tools/any-agent"
+Repository = "https://github.com/Open-Agent-Tools/any-agent"
+Documentation = "https://github.com/Open-Agent-Tools/any-agent#readme"
+"Bug Tracker" = "https://github.com/Open-Agent-Tools/any-agent/issues"
 keywords = ["ai", "agent", "containerization", "docker", "framework", "a2a", "automation"]
 classifiers = [
     "Development Status :: 4 - Beta",
