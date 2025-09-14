@@ -481,9 +481,14 @@ def main(
                 # Build the UI
                 build_result = ui_manager.build_ui()
                 if build_result["success"]:
-                    click.echo(
-                        f"✅ UI built successfully ({build_result['build_size_mb']} MB)"
-                    )
+                    if "message" in build_result:
+                        # PyPI installation with pre-built assets
+                        click.echo(f"✅ {build_result['message']}")
+                    else:
+                        # Fresh build from source
+                        click.echo(
+                            f"✅ UI built successfully ({build_result['build_size_mb']} MB)"
+                        )
                 else:
                     click.echo(f"❌ UI build failed: {build_result['error']}")
                     if "recommendation" in build_result:

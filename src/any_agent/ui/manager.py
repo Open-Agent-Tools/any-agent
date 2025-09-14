@@ -30,8 +30,21 @@ class UIBuildManager:
 
         return True
 
+    def is_pypi_installation(self) -> bool:
+        """Check if this is a PyPI installation (no source files)."""
+        return not self.package_json.exists()
+
     def should_rebuild_ui(self, force_rebuild: bool = False) -> bool:
         """Determine if UI should be rebuilt."""
+        # Check if this is a PyPI installation
+        if self.is_pypi_installation():
+            if self.is_ui_built():
+                logger.info("PyPI installation detected - using pre-built UI assets")
+                return False
+            else:
+                logger.warning("PyPI installation detected but no pre-built UI assets found")
+                return False
+
         if force_rebuild:
             logger.info("Force rebuild requested via --rebuild-ui flag")
             return True
@@ -45,9 +58,26 @@ class UIBuildManager:
 
     def build_ui(self) -> Dict[str, Any]:
         """Build the React SPA UI."""
+        # Check if this is a PyPI installation
+        if self.is_pypi_installation():
+            if self.is_ui_built():
+                logger.info("PyPI installation detected - using existing pre-built UI assets")
+                return {
+                    "success": True,
+                    "message": "Using pre-built UI assets from PyPI package",
+                    "dist_dir": str(self.dist_dir),
+                }
+            else:
+                logger.error("PyPI installation detected but no pre-built UI assets found")
+                return {
+                    "success": False,
+                    "error": "No pre-built UI assets available in PyPI installation",
+                    "recommendation": "Reinstall package or contact support",
+                }
+
         logger.info(f"Building UI from {self.ui_source_dir}")
 
-        # Check if package.json exists
+        # Check if package.json exists (for development installs)
         if not self.package_json.exists():
             return {
                 "success": False,
