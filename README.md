@@ -2,6 +2,8 @@
 
 A Python framework for automatically containerizing AI agents from any framework into standardized, protocol-compliant Docker containers with consistent APIs.
 
+This is built for the homelab crew who are working across multiple frameworks and want a clean easy interface for their agents.
+
 ## Overview
 
 This project enables developers to take any local AI agent (regardless of underlying framework) and automatically wrap it in a Docker container with consistent, standardized API endpoints. The wrapper obfuscates and decouples users from the underlying agent implementation while exposing protocol-compliant interfaces including A2A, OpenAI-compatible APIs, and custom protocols.
@@ -189,3 +191,27 @@ HELMSMAN_URL=http://localhost:7080/api
 - **Container Build Success**: >99% rate with <30s startup times
 - **A2A Response Times**: <2s median across all supported frameworks
 - **Code Quality**: Zero linting violations, complete mypy type safety
+
+## 🔮 Planned Improvements
+
+### Upload Support
+- **File Upload Integration** - Native support for document, image, and multimodal content uploads through standardized endpoints
+- **Framework-Agnostic Uploads** - Automatic routing of uploaded content to appropriate framework handlers (ADK vision, Strands file processing, etc.)
+- **Progress Tracking** - Real-time upload progress with resumable transfers for large files
+
+### Universal Evaluation Framework
+- **Multi-Framework Benchmarking** - Standardized evaluation metrics across all supported frameworks
+- **Performance Comparison** - Head-to-head agent performance analysis with detailed reporting
+- **Custom Evaluation Pipelines** - Plugin architecture for domain-specific evaluation criteria
+- **Automated Testing** - Continuous evaluation integration with CI/CD pipelines
+
+### Canvas Integration
+- **Visual Agent Interfaces** - Rich canvas-based interfaces for agents that work with visual content, diagrams, and interactive elements
+- **Real-Time Collaboration** - Multi-user canvas sessions with agent interaction capabilities
+- **Export & Integration** - Canvas content export to various formats with agent-generated annotations
+- **Framework Bridge** - Seamless integration between canvas interactions and underlying agent frameworks
+
+### Enhanced Developer Experience
+- **Hot Reload Development** - Live agent updates without container rebuilds during development
+- **Enhanced Debugging** - Advanced logging, tracing, and debugging tools across all frameworks
+- **Plugin Marketplace** - Community-driven extensions and adapters for specialized use cases
