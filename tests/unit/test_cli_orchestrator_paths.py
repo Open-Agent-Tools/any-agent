@@ -9,7 +9,7 @@ from any_agent.cli import main
 class TestCLIOrchestratorPaths:
     """Test CLI orchestrator execution paths to improve coverage."""
 
-    @patch("any_agent.core.orchestrator.AgentOrchestrator")
+    @patch("any_agent.core.docker_orchestrator.AgentOrchestrator")
     @patch("any_agent.core.agent_context.AgentContextManager")
     @patch("any_agent.ui.manager.UIBuildManager")
     def test_cli_normal_execution_path_dry_run(
@@ -50,7 +50,7 @@ class TestCLIOrchestratorPaths:
             assert result.exit_code == 0
             assert "DRY RUN" in result.output
 
-    @patch("any_agent.core.orchestrator.AgentOrchestrator")
+    @patch("any_agent.core.docker_orchestrator.AgentOrchestrator")
     @patch("any_agent.core.agent_context.AgentContextManager")
     @patch("any_agent.ui.manager.UIBuildManager")
     def test_cli_framework_detection_failure(
@@ -82,7 +82,7 @@ class TestCLIOrchestratorPaths:
             # Should still complete but may show framework detection failure
             assert result.exit_code == 0
 
-    @patch("any_agent.core.orchestrator.AgentOrchestrator")
+    @patch("any_agent.core.docker_orchestrator.AgentOrchestrator")
     @patch("any_agent.core.agent_context.AgentContextManager")
     @patch("any_agent.ui.manager.UIBuildManager")
     @patch("any_agent.core.port_checker.PortChecker")
@@ -123,7 +123,7 @@ class TestCLIOrchestratorPaths:
 
             assert result.exit_code == 0
 
-    @patch("any_agent.core.orchestrator.AgentOrchestrator")
+    @patch("any_agent.core.docker_orchestrator.AgentOrchestrator")
     @patch("any_agent.core.agent_context.AgentContextManager")
     @patch("any_agent.ui.manager.UIBuildManager")
     def test_cli_ui_build_handling(self, mock_ui, mock_context, mock_orchestrator):
@@ -171,7 +171,7 @@ class TestCLIOrchestratorPaths:
                 result = runner.invoke(main, args)
                 assert result.exit_code == 0
 
-    @patch("any_agent.core.orchestrator.AgentOrchestrator")
+    @patch("any_agent.core.docker_orchestrator.AgentOrchestrator")
     @patch("any_agent.core.agent_context.AgentContextManager")
     @patch("any_agent.ui.manager.UIBuildManager")
     def test_cli_metadata_extraction_scenarios(
@@ -226,7 +226,7 @@ class TestCLIOrchestratorPaths:
 
                 assert result.exit_code == 0
 
-    @patch("any_agent.core.orchestrator.AgentOrchestrator")
+    @patch("any_agent.core.docker_orchestrator.AgentOrchestrator")
     @patch("any_agent.core.agent_context.AgentContextManager")
     @patch("any_agent.ui.manager.UIBuildManager")
     def test_cli_containerization_scenarios(
@@ -285,7 +285,7 @@ class TestCLIOrchestratorPaths:
                 # Should handle gracefully even if containerization fails in dry-run
                 assert result.exit_code == 0
 
-    @patch("any_agent.core.orchestrator.AgentOrchestrator")
+    @patch("any_agent.core.docker_orchestrator.AgentOrchestrator")
     @patch("any_agent.core.agent_context.AgentContextManager")
     @patch("any_agent.ui.manager.UIBuildManager")
     def test_cli_helmsman_registration_scenarios(
@@ -373,7 +373,7 @@ class TestCLIOrchestratorPaths:
 
                 assert result.exit_code == 0
 
-    @patch("any_agent.core.orchestrator.AgentOrchestrator")
+    @patch("any_agent.core.docker_orchestrator.AgentOrchestrator")
     def test_cli_framework_specific_port_detection(self, mock_orchestrator):
         """Test framework-specific port detection logic."""
         runner = CliRunner()

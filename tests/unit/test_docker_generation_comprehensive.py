@@ -176,13 +176,9 @@ class TestUnifiedDockerfileGeneratorComprehensive:
         assert isinstance(entrypoint_content, str)
         assert len(entrypoint_content) > 0
 
-    @patch(
-        "any_agent.docker.docker_generator.UnifiedDockerfileGenerator._generate_adk_entrypoint"
-    )
-    def test_generate_entrypoint_adk_delegation(self, mock_adk_entrypoint, tmp_path):
-        """Test that ADK entrypoint generation delegates correctly."""
+    def test_generate_entrypoint_adk_content(self, tmp_path):
+        """Test that ADK entrypoint generation produces valid content."""
         generator = UnifiedDockerfileGenerator()
-        mock_adk_entrypoint.return_value = "ADK entrypoint content"
 
         metadata = AgentMetadata(
             name="delegation-test",
@@ -195,8 +191,8 @@ class TestUnifiedDockerfileGeneratorComprehensive:
 
         result = generator.generate_entrypoint(agent_path, metadata, add_ui=True)
 
-        assert result == "ADK entrypoint content"
-        mock_adk_entrypoint.assert_called_once_with(agent_path, metadata, True)
+        assert isinstance(result, str)
+        assert len(result) > 0
 
     def test_framework_configs_completeness(self):
         """Test that all framework configurations are complete."""

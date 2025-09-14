@@ -245,7 +245,7 @@ class TestCLIComprehensiveCoverage:
 
                 assert result.exit_code == 0
 
-    @patch("any_agent.core.orchestrator.AgentOrchestrator")
+    @patch("any_agent.core.docker_orchestrator.AgentOrchestrator")
     def test_cli_framework_detection_paths(self, mock_orchestrator):
         """Test CLI framework detection with different outcomes."""
         runner = CliRunner()
@@ -266,7 +266,7 @@ class TestCLIComprehensiveCoverage:
 
             assert result.exit_code == 0
 
-    @patch("any_agent.core.orchestrator.AgentOrchestrator")
+    @patch("any_agent.core.docker_orchestrator.AgentOrchestrator")
     def test_cli_no_framework_detected_fallback(self, mock_orchestrator):
         """Test CLI behavior when no framework is detected."""
         runner = CliRunner()
@@ -337,7 +337,7 @@ class TestCLIComprehensiveCoverage:
 
     @patch("any_agent.core.agent_remover.AgentRemover")
     @patch("any_agent.core.agent_context.AgentContextManager")
-    @patch("any_agent.core.orchestrator.AgentOrchestrator")
+    @patch("any_agent.core.docker_orchestrator.AgentOrchestrator")
     def test_cli_removal_agent_name_detection_fallback(
         self, mock_orchestrator, mock_context, mock_remover
     ):
@@ -376,7 +376,7 @@ class TestCLIComprehensiveCoverage:
 
     @patch("any_agent.core.agent_remover.AgentRemover")
     @patch("any_agent.core.agent_context.AgentContextManager")
-    @patch("any_agent.core.orchestrator.AgentOrchestrator")
+    @patch("any_agent.core.docker_orchestrator.AgentOrchestrator")
     def test_cli_removal_no_agent_name_error(
         self, mock_orchestrator, mock_context, mock_remover
     ):
