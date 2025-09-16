@@ -8,18 +8,20 @@ translate URLs that reference host machine services so they work from inside con
 
 Key Features:
 - Platform-specific Docker host detection (host.docker.internal on macOS/Windows, 172.17.0.1 on Linux)
-- Conservative translation - only translates known host service environment variables
+- Universal translation - translates ALL localhost URLs found in environment variables
 - Detailed logging of all translations for debugging
 - Preserves non-localhost URLs unchanged
 
 Integration Points:
 - docker_orchestrator.py: Automatically translates environment variables before container startup
-- Supports Google ADK MCP servers, Helmsman services, and other explicitly named host services
+- Supports any service running on localhost that containers need to access
 """
 
 import logging
+import os
 import platform
 import re
+from pathlib import Path
 from typing import Any, Dict, Tuple
 from urllib.parse import urlparse, urlunparse
 
@@ -53,8 +55,8 @@ class URLTranslator:
     ) -> Tuple[Dict[str, str], Dict[str, Dict[str, Any]]]:
         """Translate environment variables for Docker deployment.
 
-        Only translates URLs that are known to reference host machine services
-        that need to be accessible from inside Docker containers.
+        Translates ALL localhost URLs in environment variables to work inside Docker containers.
+        This ensures any service running on the host machine is accessible from containers.
 
         Args:
             env_vars: Original environment variables from .env files
@@ -67,65 +69,36 @@ class URLTranslator:
         translated_vars = env_vars.copy()
         translation_log = {}
 
-        # ONLY translate environment variables that are known to reference
-        # host machine services that containers need to access
-        host_service_vars = [
-            "MCP_SERVER_URL",  # MCP servers typically run on host
-            "MCP_HTTP_URL",  # MCP HTTP endpoint on host
-            "HELMSMAN_URL",  # Helmsman runs on host
-            "HELMSMAN_MCP_URL",  # Helmsman MCP endpoint on host
-        ]
-
-        # Additional variables that might reference host services
-        # but require explicit opt-in via naming convention
-        potential_host_vars = [
-            "HOST_API_URL",  # Explicitly marked as host service
-            "HOST_SERVICE_URL",  # Explicitly marked as host service
-            "EXTERNAL_API_URL",  # Could be host or truly external
-        ]
-
-        for var_name in host_service_vars:
-            if var_name in env_vars:
-                original_url = env_vars[var_name]
-                translated_url = self._translate_url(original_url)
-
-                if translated_url != original_url:
-                    translated_vars[var_name] = translated_url
-                    translation_log[var_name] = {
-                        "original": original_url,
-                        "translated": translated_url,
-                        "docker_host": self._docker_host,
-                        "reason": "known host service",
-                    }
-                    logger.info(
-                        f"Translated {var_name}: {original_url} → {translated_url}"
-                    )
-
-        # Check potential host variables with explicit naming
-        for var_name in potential_host_vars:
-            if var_name in env_vars:
-                original_url = env_vars[var_name]
-                if self._looks_like_localhost_url(original_url):
+        # Check ALL environment variables for localhost URLs that point to Docker services
+        for var_name, value in env_vars.items():
+            if self._looks_like_localhost_url(value):
+                # Only translate URLs that point to Docker services
+                if self._is_docker_service(value):
+                    original_url = value
                     translated_url = self._translate_url(original_url)
+
                     if translated_url != original_url:
                         translated_vars[var_name] = translated_url
                         translation_log[var_name] = {
                             "original": original_url,
                             "translated": translated_url,
                             "docker_host": self._docker_host,
-                            "reason": "explicit host variable naming",
+                            "reason": "Docker service detected",
                         }
                         logger.info(
-                            f"Translated {var_name}: {original_url} → {translated_url}"
+                            f"Translated {var_name}: {original_url} → {translated_url} (Docker service)"
                         )
+                else:
+                    logger.debug(
+                        f"Skipping {var_name}: {value} (not a Docker service)"
+                    )
 
         if translation_log:
             logger.info(
                 f"Applied Docker URL translations for {len(translation_log)} variables"
             )
-            logger.debug("URL translation only applied to known host services")
         else:
-            logger.debug("No host service URLs found requiring translation")
+            logger.debug("No localhost URLs found requiring translation")
 
         return translated_vars, translation_log
 
@@ -175,6 +148,76 @@ class URLTranslator:
             r"^https?://(?:localhost|127\.0\.0\.1)(?::\d+)?(?:/.*)?$", re.IGNORECASE
         )
         return bool(url_pattern.match(value.strip()))
+
+    def _is_docker_service(self, url: str) -> bool:
+        """Check if a URL points to a service running in Docker.
+
+        This method attempts to detect if the target service is containerized
+        by checking common indicators.
+
+        Args:
+            url: URL to check
+
+        Returns:
+            True if the service appears to be running in Docker
+        """
+        if not self._looks_like_localhost_url(url):
+            return False
+
+        try:
+            import subprocess
+            import socket
+            from urllib.parse import urlparse
+
+            parsed = urlparse(url)
+            port = parsed.port
+
+            if not port:
+                return False
+
+            # Check if we can connect to the service
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(1)  # 1 second timeout
+                result = sock.connect_ex(('localhost', port))
+                sock.close()
+
+                if result != 0:
+                    # Service not running
+                    return False
+
+            except Exception:
+                return False
+
+            # Try to detect if it's a Docker container by checking docker ps
+            try:
+                result = subprocess.run(
+                    ['docker', 'ps', '--format', '{{.Ports}}'],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+
+                if result.returncode == 0:
+                    # Look for port mappings that match our target port
+                    for line in result.stdout.strip().split('\n'):
+                        if f':{port}->' in line or f'0.0.0.0:{port}' in line:
+                            logger.debug(f"Found Docker container exposing port {port}")
+                            return True
+
+            except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
+                # Docker not available or command failed
+                pass
+
+            # Additional heuristics could be added here:
+            # - Check for docker-compose services
+            # - Check container networking
+            # - Look for specific service patterns
+
+        except Exception as e:
+            logger.debug(f"Error checking if {url} is Docker service: {e}")
+
+        return False
 
     def get_docker_host(self) -> str:
         """Get the detected Docker host for this platform.

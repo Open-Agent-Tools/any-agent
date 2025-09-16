@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional
 from .framework_detector import FrameworkDetector
 from .env_loader import EnvironmentLoader
 from .port_checker import PortChecker
+from .dependency_installer import DependencyInstaller
 from ..localhost.fastapi_generator import LocalhostFastAPIGenerator
 from ..localhost.server import LocalhostServer
 from ..localhost.file_watcher import create_file_watcher
@@ -28,6 +29,7 @@ class LocalhostOrchestrator:
             supported_frameworks=["google_adk", "aws_strands"]
         )
         self.env_loader = EnvironmentLoader()
+        self.dependency_installer = DependencyInstaller()
 
         # Localhost-specific components
         self.fastapi_generator = LocalhostFastAPIGenerator()
@@ -115,7 +117,20 @@ class LocalhostOrchestrator:
                 }
             results["steps"]["validation"] = {"status": "success"}
 
-            # Step 3: Extract Metadata (reuse existing)
+            # Step 3: Install Dependencies (localhost-specific)
+            print("📦 Installing agent dependencies...")
+            dependency_success = self.dependency_installer.install_agent_dependencies(agent_path_obj)
+            if not dependency_success:
+                print("   ⚠️  Warning: Some dependencies could not be installed")
+                logger.warning("Dependency installation failed, but continuing...")
+            else:
+                print("   ✅ Dependencies installed successfully")
+            results["steps"]["dependencies"] = {
+                "status": "success" if dependency_success else "warning",
+                "installed": dependency_success
+            }
+
+            # Step 4: Extract Metadata (reuse existing)
             print("📋 Extracting agent metadata...")
             metadata = adapter.extract_metadata(agent_path_obj)
             self.current_metadata = metadata  # Store for hot reload
@@ -125,7 +140,7 @@ class LocalhostOrchestrator:
                 "agent_name": metadata.name,
             }
 
-            # Step 4: Load Environment (reuse existing, but make optional for localhost)
+            # Step 5: Load Environment (reuse existing, but make optional for localhost)
             print("🌍 Loading environment variables...")
             try:
                 env_vars = self.env_loader.load_env_with_priority(agent_path_obj)
@@ -139,7 +154,7 @@ class LocalhostOrchestrator:
                     raise
             results["steps"]["environment"] = {"status": "success"}
 
-            # Step 5: Generate FastAPI App (localhost-specific)
+            # Step 6: Generate FastAPI App (localhost-specific)
             print("🏗️  Generating FastAPI application...")
             output_path = (
                 Path(output_dir) if output_dir else agent_path_obj / ".any_agent"

@@ -55,7 +55,7 @@ def create_agent():
     """Create Product Pete agent with MCP tools."""
     tools =[]
     # Add MCP tools - handle failures gracefully
-    mcp_url = os.getenv("MCP_SERVER_URL", "http://localhost:9000/mcp/")
+    mcp_url = os.getenv("ATLASSIAN_MCP_URL", "http://localhost:9000/mcp/")
     tools = add_mcp_tools(tools, mcp_url)
     
     # Create the Anthropic model with Claude Sonnet 4

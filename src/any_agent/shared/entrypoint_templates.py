@@ -55,20 +55,21 @@ class UnifiedEntrypointGenerator:
         logger.error(f"Failed to load agent: {{e}}")
         raise"""
         else:
+            # Use absolute path from context since __file__ isn't reliable in uvicorn
+            agent_parent_dir = str(context.agent_path.parent.resolve())
             return f"""def load_agent():
     \"\"\"Load the agent dynamically.\"\"\"
     try:
-        # We are in .any_agent/localhost_app.py
-        # Go up to agent directory, then up to parent directory to import agent as module
-        agent_parent_dir = Path(__file__).parent.parent.parent
-        sys.path.insert(0, str(agent_parent_dir))
-        
-        # Import the agent package from parent directory
+        # Use absolute path to agent parent directory
+        agent_parent_dir = "{agent_parent_dir}"
+        sys.path.insert(0, agent_parent_dir)
+
+        # Import the agent package
         import {context.agent_path.name}
-        
+
         if not hasattr({context.agent_path.name}, 'root_agent'):
             raise ValueError("Agent package must have 'root_agent' variable exposed in __init__.py")
-            
+
         return {context.agent_path.name}.root_agent
     except Exception as e:
         logger.error(f"Failed to load agent: {{e}}")
