@@ -1,0 +1,14 @@
+# Google ADK Agent Dependencies
+google-adk[a2a]
+a2a-sdk
+python-dotenv
+
+# Additional dependencies for MCP connectivity
+httpx
+fastmcp
+
+# tools
+basic-open-agent-tools
+
+# Framework-specific A2A dependencies
+uvicorn[standard]
