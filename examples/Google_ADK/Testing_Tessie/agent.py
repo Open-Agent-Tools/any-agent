@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.ERROR)
 warnings.filterwarnings("ignore")
 
 # Configuration from environment variables only
-MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:7081/mcp") # helmsman
+HELMSMAN_MCP_URL = os.getenv("HELMSMAN_MCP_URL", "http://localhost:7081/mcp") # helmsman
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 GOOGLE_MODEL = os.getenv("GOOGLE_MODEL", "gemini-1.5-flash")
 
@@ -58,18 +58,19 @@ def create_agent() -> Agent:
         mcp_toolset = [
             MCPToolset(
                 connection_params=StreamableHTTPConnectionParams(
-                    url=MCP_SERVER_URL, #helmsman
+                    url=HELMSMAN_MCP_URL, #helmsman
                 ),
             ),
         ]
-        agent_tools = mcp_toolset + date_tools
+        agent_tools = date_tools + mcp_toolset
         print(
-            f"Successfully configured MCP tools for {MCP_SERVER_URL} (translated from {MCP_SERVER_URL})"
+            f"Successfully configured MCP tools for {HELMSMAN_MCP_URL} (translated from {HELMSMAN_MCP_URL})"
         )
     except Exception as e:
         print(
-            f"Warning: Could not configure MCP tools for {MCP_SERVER_URL}: {e}, using basic tools only"
+            f"Warning: Could not configure MCP tools for {HELMSMAN_MCP_URL}: {e}, using basic tools only"
         )
+        agent_tools = date_tools
 
     return Agent(
         model=GOOGLE_MODEL,

@@ -164,13 +164,13 @@ except Exception as e:
             "status": "error",
             "agent_loaded": False,
             "framework": "google_adk",
-            "error": str(e),
+            "error": "Agent loading failed",
             "localhost_mode": {str(context.deployment_type == "localhost").title()}
         }}
     
     @app.get("/")
     async def root_error():
-        return {{"error": "Agent failed to load", "details": str(e)}}
+        return {{"error": "Agent failed to load", "details": "Agent loading failed"}}
 
 
 if __name__ == "__main__":
@@ -316,7 +316,7 @@ except Exception as e:
             "status": "error",
             "agent_loaded": False,
             "framework": "aws_strands",
-            "error": str(e),
+            "error": "Agent loading failed",
             "localhost_mode": {str(context.deployment_type == "localhost").title()}
         }})
     

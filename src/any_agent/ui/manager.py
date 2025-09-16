@@ -1,6 +1,7 @@
 """UI Build Manager for Any Agent framework."""
 
 import logging
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -13,7 +14,16 @@ class UIBuildManager:
     """Manages the React SPA build process for Any Agent UI."""
 
     def __init__(self):
-        self.ui_source_dir = Path(__file__).parent
+        # Check if we're in development mode (source code available)
+        current_dir = Path(__file__).parent
+
+        # Look for development source directory
+        possible_dev_dir = Path(os.getcwd()) / "src" / "any_agent" / "ui"
+        if possible_dev_dir.exists() and (possible_dev_dir / "package.json").exists():
+            self.ui_source_dir = possible_dev_dir
+        else:
+            self.ui_source_dir = current_dir
+
         self.dist_dir = self.ui_source_dir / "dist"
         self.package_json = self.ui_source_dir / "package.json"
 

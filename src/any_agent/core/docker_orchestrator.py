@@ -16,6 +16,7 @@ from .port_checker import PortChecker
 from .agent_context import AgentContextManager
 from .framework_detector import FrameworkDetector
 from .env_loader import EnvironmentLoader
+from .url_translator import URLTranslator
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ class AgentOrchestrator:
         )
         self.docker_generator = UnifiedDockerfileGenerator()
         self.env_loader = EnvironmentLoader()
+        self.url_translator = URLTranslator()
 
     def detect_framework(self, agent_path: Path) -> Optional[BaseFrameworkAdapter]:
         """
@@ -208,22 +210,22 @@ class AgentOrchestrator:
         # Always set AGENT_PORT
         run_cmd.extend(["-e", f"AGENT_PORT={port}"])
 
-        # Add all environment variables from .env files and CLI
+        # Add all environment variables from .env files and CLI with URL translation
         if hasattr(self, "framework_env_vars"):
-            for key, value in self.framework_env_vars.items():
+            # Apply URL translation for Docker deployment
+            translated_vars, translation_log = self.url_translator.translate_env_vars_for_docker(
+                self.framework_env_vars
+            )
+
+            # Log translation results if any occurred
+            if translation_log:
+                logger.info(f"🐳 Applied URL translations for Docker deployment:")
+                for var_name, translation_info in translation_log.items():
+                    logger.info(f"  {var_name}: {translation_info['original']} → {translation_info['translated']}")
+
+            for key, value in translated_vars.items():
                 if key != "AGENT_PORT":  # Skip AGENT_PORT since we already set it
-                    # Transform localhost URLs for Docker networking
-                    if isinstance(value, str) and "localhost" in value:
-                        # Replace localhost with host.docker.internal for container access
-                        docker_value = value.replace(
-                            "localhost", "host.docker.internal"
-                        )
-                        logger.info(
-                            f"🐳 Transformed {key}: localhost -> host.docker.internal"
-                        )
-                        run_cmd.extend(["-e", f"{key}={docker_value}"])
-                    else:
-                        run_cmd.extend(["-e", f"{key}={value}"])
+                    run_cmd.extend(["-e", f"{key}={value}"])
                     logger.debug(
                         f"Setting environment variable: {key}={value[:10]}..."
                         if len(value) > 10
