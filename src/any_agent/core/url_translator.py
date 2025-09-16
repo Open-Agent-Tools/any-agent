@@ -20,7 +20,7 @@ Integration Points:
 import logging
 import platform
 import re
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 from urllib.parse import urlparse, urlunparse
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,9 @@ class URLTranslator:
             # Linux - use Docker bridge gateway
             return "172.17.0.1"
 
-    def translate_env_vars_for_docker(self, env_vars: Dict[str, str]) -> Tuple[Dict[str, str], Dict[str, str]]:
+    def translate_env_vars_for_docker(
+        self, env_vars: Dict[str, str]
+    ) -> Tuple[Dict[str, str], Dict[str, Dict[str, Any]]]:
         """Translate environment variables for Docker deployment.
 
         Only translates URLs that are known to reference host machine services
@@ -68,18 +70,18 @@ class URLTranslator:
         # ONLY translate environment variables that are known to reference
         # host machine services that containers need to access
         host_service_vars = [
-            "MCP_SERVER_URL",       # MCP servers typically run on host
-            "MCP_HTTP_URL",         # MCP HTTP endpoint on host
-            "HELMSMAN_URL",         # Helmsman runs on host
-            "HELMSMAN_MCP_URL",     # Helmsman MCP endpoint on host
+            "MCP_SERVER_URL",  # MCP servers typically run on host
+            "MCP_HTTP_URL",  # MCP HTTP endpoint on host
+            "HELMSMAN_URL",  # Helmsman runs on host
+            "HELMSMAN_MCP_URL",  # Helmsman MCP endpoint on host
         ]
 
         # Additional variables that might reference host services
         # but require explicit opt-in via naming convention
         potential_host_vars = [
-            "HOST_API_URL",         # Explicitly marked as host service
-            "HOST_SERVICE_URL",     # Explicitly marked as host service
-            "EXTERNAL_API_URL",     # Could be host or truly external
+            "HOST_API_URL",  # Explicitly marked as host service
+            "HOST_SERVICE_URL",  # Explicitly marked as host service
+            "EXTERNAL_API_URL",  # Could be host or truly external
         ]
 
         for var_name in host_service_vars:
@@ -93,9 +95,11 @@ class URLTranslator:
                         "original": original_url,
                         "translated": translated_url,
                         "docker_host": self._docker_host,
-                        "reason": "known host service"
+                        "reason": "known host service",
                     }
-                    logger.info(f"Translated {var_name}: {original_url} → {translated_url}")
+                    logger.info(
+                        f"Translated {var_name}: {original_url} → {translated_url}"
+                    )
 
         # Check potential host variables with explicit naming
         for var_name in potential_host_vars:
@@ -109,12 +113,16 @@ class URLTranslator:
                             "original": original_url,
                             "translated": translated_url,
                             "docker_host": self._docker_host,
-                            "reason": "explicit host variable naming"
+                            "reason": "explicit host variable naming",
                         }
-                        logger.info(f"Translated {var_name}: {original_url} → {translated_url}")
+                        logger.info(
+                            f"Translated {var_name}: {original_url} → {translated_url}"
+                        )
 
         if translation_log:
-            logger.info(f"Applied Docker URL translations for {len(translation_log)} variables")
+            logger.info(
+                f"Applied Docker URL translations for {len(translation_log)} variables"
+            )
             logger.debug("URL translation only applied to known host services")
         else:
             logger.debug("No host service URLs found requiring translation")
@@ -164,27 +172,7 @@ class URLTranslator:
 
         # Detect localhost URLs - starts with http/https and contains localhost
         url_pattern = re.compile(
-            r'^https?://(?:localhost|127\.0\.0\.1)(?::\d+)?(?:/.*)?$',
-            re.IGNORECASE
-        )
-        return bool(url_pattern.match(value.strip()))
-
-    def _looks_like_url(self, value: str) -> bool:
-        """Check if a string looks like any URL.
-
-        Args:
-            value: String to check
-
-        Returns:
-            True if string appears to be a URL
-        """
-        if not isinstance(value, str):
-            return False
-
-        # General URL detection
-        url_pattern = re.compile(
-            r'^https?://[^\s]+$',
-            re.IGNORECASE
+            r"^https?://(?:localhost|127\.0\.0\.1)(?::\d+)?(?:/.*)?$", re.IGNORECASE
         )
         return bool(url_pattern.match(value.strip()))
 
@@ -196,7 +184,9 @@ class URLTranslator:
         """
         return self._docker_host
 
-    def create_docker_env_file(self, translated_vars: Dict[str, str], output_path: str) -> str:
+    def create_docker_env_file(
+        self, translated_vars: Dict[str, str], output_path: str
+    ) -> str:
         """Create a .env file with translated variables for Docker.
 
         Args:
@@ -207,7 +197,7 @@ class URLTranslator:
             Content of the created .env file
         """
         env_content = "# Docker-translated environment variables\n"
-        env_content += f"# Generated by Any Agent URL Translator\n"
+        env_content += "# Generated by Any Agent URL Translator\n"
         env_content += f"# Docker host: {self._docker_host}\n\n"
 
         for key, value in sorted(translated_vars.items()):
@@ -216,7 +206,7 @@ class URLTranslator:
             env_content += f'{key}="{escaped_value}"\n'
 
         try:
-            with open(output_path, 'w', encoding='utf-8') as f:
+            with open(output_path, "w", encoding="utf-8") as f:
                 f.write(env_content)
             logger.info(f"Created Docker .env file: {output_path}")
         except Exception as e:

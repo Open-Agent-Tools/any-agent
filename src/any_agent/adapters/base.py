@@ -43,9 +43,11 @@ class BaseFrameworkAdapter(ABC):
     def framework_name(self) -> str:
         """Name of the framework this adapter handles."""
 
-    def _aggregate_file_contents(self, agent_path: Path, file_pattern: str = "*.py") -> str:
+    def _read_all_python_files(
+        self, agent_path: Path, file_pattern: str = "*.py"
+    ) -> str:
         """
-        Aggregate all files matching pattern in the agent directory.
+        Read and combine all Python files in the agent directory.
 
         Args:
             agent_path: Path to the agent directory
@@ -128,7 +130,9 @@ class BaseFrameworkAdapter(ABC):
 
         return None
 
-    def _validate_python_syntax(self, agent_path: Path, result: ValidationResult) -> None:
+    def _validate_python_syntax(
+        self, agent_path: Path, result: ValidationResult
+    ) -> None:
         """
         Validate syntax of all Python files in the agent directory.
 

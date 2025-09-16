@@ -213,15 +213,19 @@ class AgentOrchestrator:
         # Add all environment variables from .env files and CLI with URL translation
         if hasattr(self, "framework_env_vars"):
             # Apply URL translation for Docker deployment
-            translated_vars, translation_log = self.url_translator.translate_env_vars_for_docker(
-                self.framework_env_vars
+            translated_vars, translation_log = (
+                self.url_translator.translate_env_vars_for_docker(
+                    self.framework_env_vars
+                )
             )
 
             # Log translation results if any occurred
             if translation_log:
-                logger.info(f"🐳 Applied URL translations for Docker deployment:")
+                logger.info("🐳 Applied URL translations for Docker deployment:")
                 for var_name, translation_info in translation_log.items():
-                    logger.info(f"  {var_name}: {translation_info['original']} → {translation_info['translated']}")
+                    logger.info(
+                        f"  {var_name}: {translation_info['original']} → {translation_info['translated']}"
+                    )
 
             for key, value in translated_vars.items():
                 if key != "AGENT_PORT":  # Skip AGENT_PORT since we already set it

@@ -1,6 +1,5 @@
 """CrewAI framework adapter for Any Agent."""
 
-import ast
 import logging
 import re
 from pathlib import Path
@@ -30,7 +29,9 @@ class CrewAIAdapter(BaseFrameworkAdapter):
                 return False
 
             # Check for CrewAI imports anywhere in the directory
-            if not self._has_framework_imports_in_directory(agent_path, self._has_crewai_imports):
+            if not self._has_framework_imports_in_directory(
+                agent_path, self._has_crewai_imports
+            ):
                 logger.debug(f"No CrewAI imports found in {agent_path}")
                 return False
 
@@ -40,7 +41,6 @@ class CrewAIAdapter(BaseFrameworkAdapter):
         except Exception as e:
             logger.error(f"Error detecting CrewAI agent at {agent_path}: {e}")
             return False
-
 
     def _has_crewai_imports(self, content: str) -> bool:
         """Check if content contains CrewAI imports."""
@@ -65,7 +65,7 @@ class CrewAIAdapter(BaseFrameworkAdapter):
         )
 
         # Extract from all Python files in the directory
-        all_content = self._aggregate_file_contents(agent_path)
+        all_content = self._read_all_python_files(agent_path)
 
         metadata.model = self._extract_model(all_content)
         metadata.description = self._extract_description(all_content)
@@ -118,7 +118,9 @@ class CrewAIAdapter(BaseFrameworkAdapter):
         result = ValidationResult(is_valid=True)
 
         # Check for CrewAI imports anywhere in the directory
-        if not self._has_framework_imports_in_directory(agent_path, self._has_crewai_imports):
+        if not self._has_framework_imports_in_directory(
+            agent_path, self._has_crewai_imports
+        ):
             result.errors.append("No CrewAI imports found in directory")
             result.is_valid = False
 

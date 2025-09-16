@@ -1,6 +1,5 @@
 """LangChain framework adapter for Any Agent."""
 
-import ast
 import logging
 import re
 from pathlib import Path
@@ -30,7 +29,9 @@ class LangChainAdapter(BaseFrameworkAdapter):
                 return False
 
             # Check for LangChain imports anywhere in the directory
-            if not self._has_framework_imports_in_directory(agent_path, self._has_langchain_imports):
+            if not self._has_framework_imports_in_directory(
+                agent_path, self._has_langchain_imports
+            ):
                 logger.debug(f"No LangChain imports found in {agent_path}")
                 return False
 
@@ -40,7 +41,6 @@ class LangChainAdapter(BaseFrameworkAdapter):
         except Exception as e:
             logger.error(f"Error detecting LangChain agent at {agent_path}: {e}")
             return False
-
 
     def _has_langchain_imports(self, content: str) -> bool:
         """Check if content contains LangChain imports."""
@@ -65,7 +65,7 @@ class LangChainAdapter(BaseFrameworkAdapter):
     def extract_metadata(self, agent_path: Path) -> AgentMetadata:
         """Extract metadata from LangChain agent."""
         # Extract from all Python files in the directory
-        all_content = self._aggregate_file_contents(agent_path)
+        all_content = self._read_all_python_files(agent_path)
 
         metadata = AgentMetadata(
             name=agent_path.name.replace("_", " ").title(),
@@ -147,7 +147,9 @@ class LangChainAdapter(BaseFrameworkAdapter):
         result = ValidationResult(is_valid=True)
 
         # Check for LangChain imports anywhere in the directory
-        if not self._has_framework_imports_in_directory(agent_path, self._has_langchain_imports):
+        if not self._has_framework_imports_in_directory(
+            agent_path, self._has_langchain_imports
+        ):
             result.errors.append("No LangChain imports found in directory")
             result.is_valid = False
 

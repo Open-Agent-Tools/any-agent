@@ -39,7 +39,9 @@ class GoogleADKAdapter(BaseFrameworkAdapter):
                 return False
 
             # Check for ADK imports anywhere in the directory
-            if not self._has_framework_imports_in_directory(agent_path, self._has_adk_imports):
+            if not self._has_framework_imports_in_directory(
+                agent_path, self._has_adk_imports
+            ):
                 logger.debug(f"No Google ADK imports found in {agent_path}")
                 return False
 
@@ -49,9 +51,6 @@ class GoogleADKAdapter(BaseFrameworkAdapter):
         except Exception as e:
             logger.error(f"Error detecting ADK agent at {agent_path}: {e}")
             return False
-
-
-
 
     def _has_adk_imports(self, content: str) -> bool:
         """Check if content contains Google ADK imports."""
@@ -64,7 +63,6 @@ class GoogleADKAdapter(BaseFrameworkAdapter):
             if re.search(pattern, content):
                 return True
         return False
-
 
     def _has_root_agent_import(self, content: str) -> bool:
         """Check if content imports root_agent from agent module."""
@@ -89,7 +87,7 @@ class GoogleADKAdapter(BaseFrameworkAdapter):
     def extract_metadata(self, agent_path: Path) -> AgentMetadata:
         """Extract metadata from ADK agent."""
         # Extract from all Python files in the directory
-        all_content = self._aggregate_file_contents(agent_path)
+        all_content = self._read_all_python_files(agent_path)
 
         metadata = AgentMetadata(
             name=self._extract_agent_name_from_directory(agent_path),
@@ -126,8 +124,6 @@ class GoogleADKAdapter(BaseFrameworkAdapter):
     def _extract_agent_name_from_content(self, content: str) -> Optional[str]:
         """Extract agent name from Agent() constructor in content."""
         return self._extract_agent_name_from_ast(content)
-
-
 
     def _extract_model(self, content: str) -> Optional[str]:
         """Extract model name from agent content."""
@@ -189,8 +185,6 @@ class GoogleADKAdapter(BaseFrameworkAdapter):
 
         return tools
 
-
-
     def _extract_model_best_source(self, content: str) -> Optional[str]:
         """Extract model using best available source."""
         # 1. Try environment variable (most dynamic)
@@ -221,10 +215,6 @@ class GoogleADKAdapter(BaseFrameworkAdapter):
     def _get_runtime_model(self) -> Optional[str]:
         """Get model from environment at runtime."""
         return os.getenv("GOOGLE_MODEL", "").strip("\"'") or None
-
-
-
-
 
     def _detect_local_dependencies(self, agent_path: Path, content: str) -> list[str]:
         """Detect local agent dependencies by analyzing import statements."""
@@ -307,10 +297,10 @@ class GoogleADKAdapter(BaseFrameworkAdapter):
                 result.is_valid = False
 
         # Check for ADK imports anywhere in the directory
-        if not self._has_framework_imports_in_directory(agent_path, self._has_adk_imports):
+        if not self._has_framework_imports_in_directory(
+            agent_path, self._has_adk_imports
+        ):
             result.errors.append("No Google ADK imports found in directory")
             result.is_valid = False
 
         return result
-
-

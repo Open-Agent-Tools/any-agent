@@ -1,6 +1,5 @@
 """LangGraph framework adapter for Any Agent."""
 
-import ast
 import logging
 import re
 from pathlib import Path
@@ -30,7 +29,9 @@ class LangGraphAdapter(BaseFrameworkAdapter):
                 return False
 
             # Check for LangGraph imports anywhere in the directory
-            if not self._has_framework_imports_in_directory(agent_path, self._has_langgraph_imports):
+            if not self._has_framework_imports_in_directory(
+                agent_path, self._has_langgraph_imports
+            ):
                 logger.debug(f"No LangGraph imports found in {agent_path}")
                 return False
 
@@ -40,7 +41,6 @@ class LangGraphAdapter(BaseFrameworkAdapter):
         except Exception as e:
             logger.error(f"Error detecting LangGraph agent at {agent_path}: {e}")
             return False
-
 
     def _has_langgraph_imports(self, content: str) -> bool:
         """Check if content contains LangGraph imports."""
@@ -66,7 +66,7 @@ class LangGraphAdapter(BaseFrameworkAdapter):
         )
 
         # Extract from all Python files in the directory
-        all_content = self._aggregate_file_contents(agent_path)
+        all_content = self._read_all_python_files(agent_path)
 
         metadata.model = self._extract_model(all_content)
         metadata.description = self._extract_description(all_content)
@@ -115,7 +115,9 @@ class LangGraphAdapter(BaseFrameworkAdapter):
         result = ValidationResult(is_valid=True)
 
         # Check for LangGraph imports anywhere in the directory
-        if not self._has_framework_imports_in_directory(agent_path, self._has_langgraph_imports):
+        if not self._has_framework_imports_in_directory(
+            agent_path, self._has_langgraph_imports
+        ):
             result.errors.append("No LangGraph imports found in directory")
             result.is_valid = False
 

@@ -30,7 +30,9 @@ class AWSStrandsAdapter(BaseFrameworkAdapter):
                 return False
 
             # Check for Strands imports anywhere in the directory
-            if not self._has_framework_imports_in_directory(agent_path, self._has_strands_imports):
+            if not self._has_framework_imports_in_directory(
+                agent_path, self._has_strands_imports
+            ):
                 logger.debug(f"No Strands imports found in {agent_path}")
                 return False
 
@@ -40,7 +42,6 @@ class AWSStrandsAdapter(BaseFrameworkAdapter):
         except Exception as e:
             logger.error(f"Error detecting AWS Strands agent at {agent_path}: {e}")
             return False
-
 
     def _has_strands_imports(self, content: str) -> bool:
         """Check if content contains Strands imports."""
@@ -80,7 +81,7 @@ class AWSStrandsAdapter(BaseFrameworkAdapter):
                 logger.debug(f"Error reading agent.py: {e}")
 
         # Extract from all Python files as fallback
-        all_content = self._aggregate_file_contents(agent_path)
+        all_content = self._read_all_python_files(agent_path)
 
         # Use agent.py content primarily, fall back to all content
         primary_content = agent_content if agent_content else all_content
