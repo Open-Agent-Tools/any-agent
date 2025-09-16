@@ -65,39 +65,7 @@ class GoogleADKAdapter(BaseFrameworkAdapter):
                 continue
         return False
 
-    def _detect_complete_a2a_app(self, agent_path: Path) -> bool:
-        """Detect complete A2A app with a2a_app.py file."""
-        agent_file = agent_path / "a2a_app.py"
 
-        if not agent_file.exists():
-            return False
-
-        content = agent_file.read_text(encoding="utf-8")
-
-        # Check for ADK imports and root_agent variable or import
-        return self._has_adk_imports(content) and (
-            self._has_root_agent(content) or self._has_root_agent_import(content)
-        )
-
-    def _detect_minimal_adk_agent(self, agent_path: Path) -> bool:
-        """Detect minimal ADK agent with agent.py + __init__.py structure."""
-        agent_file = agent_path / "agent.py"
-        init_file = agent_path / "__init__.py"
-
-        if not agent_file.exists() or not init_file.exists():
-            return False
-
-        # Check agent.py for ADK imports
-        agent_content = agent_file.read_text(encoding="utf-8")
-        if not self._has_adk_imports(agent_content):
-            return False
-
-        # Check __init__.py for root_agent export
-        init_content = init_file.read_text(encoding="utf-8")
-        if not self._has_root_agent_import(init_content):
-            return False
-
-        return True
 
     def _has_adk_imports(self, content: str) -> bool:
         """Check if content contains Google ADK imports."""
@@ -219,53 +187,7 @@ class GoogleADKAdapter(BaseFrameworkAdapter):
 
         return None
 
-    def _is_minimal_agent(self, agent_path: Path) -> bool:
-        """Determine if this is a minimal agent structure."""
-        return self._detect_minimal_adk_agent(agent_path)
 
-    def _extract_agent_name(self, agent_path: Path, is_minimal: bool = False) -> str:
-        """Extract agent name from Agent() configuration."""
-        if not is_minimal:
-            agent_file = agent_path / "a2a_app.py"
-        else:
-            agent_file = agent_path / "agent.py"
-
-        if not agent_file.exists():
-            return agent_path.name
-
-        try:
-            content = agent_file.read_text(encoding="utf-8")
-            tree = ast.parse(content)
-
-            # Look for Agent() constructor calls with name parameter
-            for node in ast.walk(tree):
-                if isinstance(node, ast.Call):
-                    # Check if this is an Agent() call
-                    if (
-                        isinstance(node.func, ast.Name) and node.func.id == "Agent"
-                    ) or (
-                        isinstance(node.func, ast.Attribute)
-                        and node.func.attr == "Agent"
-                    ):
-                        # Look for name parameter in keywords
-                        for keyword in node.keywords:
-                            if keyword.arg == "name" and isinstance(
-                                keyword.value, ast.Constant
-                            ):
-                                value = keyword.value.value
-                                return (
-                                    str(value) if value is not None else agent_path.name
-                                )
-
-                        # Look for name parameter in positional args (less common but possible)
-                        # This would require knowing the Agent constructor signature
-
-            # Fallback to directory name if no name found
-            return agent_path.name
-
-        except Exception as e:
-            logger.warning(f"Failed to extract agent name from {agent_file}: {e}")
-            return agent_path.name
 
     def _extract_model(self, content: str) -> Optional[str]:
         """Extract model name from agent content."""
@@ -327,77 +249,7 @@ class GoogleADKAdapter(BaseFrameworkAdapter):
 
         return tools
 
-    def _extract_agent_name_runtime_first(
-        self, agent_path: Path, is_minimal: bool = False
-    ) -> str:
-        """Extract agent name using runtime-first approach."""
-        try:
-            # Try to load and inspect the actual agent object
-            runtime_name = self._get_runtime_agent_name(agent_path, is_minimal)
-            if runtime_name:
-                return runtime_name
-        except Exception as e:
-            logger.debug(f"Runtime name extraction failed: {e}")
 
-        # Fallback to static analysis
-        return self._extract_agent_name(agent_path, is_minimal)
-
-    def _get_runtime_agent_name(
-        self, agent_path: Path, is_minimal: bool = False
-    ) -> Optional[str]:
-        """Try to load agent and get runtime name."""
-        try:
-            import sys
-            import importlib.util
-
-            # Add agent directory to path temporarily
-            original_path = sys.path[:]
-            sys.path.insert(0, str(agent_path))
-
-            try:
-                if not is_minimal:
-                    # Load agent from a2a_app.py
-                    agent_file = agent_path / "a2a_app.py"
-                    spec = importlib.util.spec_from_file_location(
-                        "temp_agent", agent_file
-                    )
-                    if not spec or not spec.loader:
-                        return None
-
-                    module = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(module)
-
-                    # Get root_agent and extract name
-                    if hasattr(module, "root_agent"):
-                        agent = module.root_agent
-                        if hasattr(agent, "name"):
-                            return agent.name
-                else:
-                    # Load agent from module structure (agent.py via __init__.py)
-                    agent_dir_name = agent_path.name
-                    spec = importlib.util.spec_from_file_location(
-                        agent_dir_name, agent_path / "__init__.py"
-                    )
-                    if not spec or not spec.loader:
-                        return None
-
-                    module = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(module)
-
-                    # Get root_agent and extract name
-                    if hasattr(module, "root_agent"):
-                        agent = module.root_agent
-                        if hasattr(agent, "name"):
-                            return agent.name
-
-            finally:
-                # Restore path
-                sys.path[:] = original_path
-
-        except Exception as e:
-            logger.debug(f"Could not load agent for runtime inspection: {e}")
-
-        return None
 
     def _extract_model_best_source(self, content: str) -> Optional[str]:
         """Extract model using best available source."""
@@ -430,135 +282,9 @@ class GoogleADKAdapter(BaseFrameworkAdapter):
         """Get model from environment at runtime."""
         return os.getenv("GOOGLE_MODEL", "").strip("\"'") or None
 
-    def _extract_description_best_source(
-        self, agent_path: Path, content: str
-    ) -> Optional[str]:
-        """Extract description using best available source."""
-        # 1. Try runtime agent inspection
-        try:
-            runtime_desc = self._get_runtime_description(agent_path)
-            if runtime_desc:
-                logger.debug("Using description from runtime agent")
-                return runtime_desc
-        except Exception as e:
-            logger.debug(f"Runtime description extraction failed: {e}")
 
-        # 2. Fallback to static analysis
-        static_desc = self._extract_description(content)
-        if static_desc:
-            logger.debug("Using description from static analysis")
-            return static_desc
 
-        # 3. Skip if unknown
-        logger.debug("Description could not be determined")
-        return None
 
-    def _get_runtime_description(self, agent_path: Path) -> Optional[str]:
-        """Get description from runtime agent."""
-        try:
-            import sys
-            import importlib.util
-
-            # Add agent directory to path temporarily
-            original_path = sys.path[:]
-            sys.path.insert(0, str(agent_path))
-
-            try:
-                # Load agent module
-                agent_file = agent_path / "a2a_app.py"
-                spec = importlib.util.spec_from_file_location("temp_agent", agent_file)
-                if not spec or not spec.loader:
-                    return None
-
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
-
-                # Get root_agent and extract description
-                if hasattr(module, "root_agent"):
-                    agent = module.root_agent
-                    if hasattr(agent, "description"):
-                        return agent.description
-
-            finally:
-                # Restore path
-                sys.path[:] = original_path
-
-        except Exception:
-            pass
-
-        return None
-
-    def _extract_tools_best_source(self, agent_path: Path, content: str) -> list[str]:
-        """Extract tools using best available source."""
-        # 1. Try runtime agent inspection
-        try:
-            runtime_tools = self._get_runtime_tools(agent_path)
-            if runtime_tools:
-                logger.debug(
-                    f"Using tools from runtime agent: {len(runtime_tools)} tools"
-                )
-                return runtime_tools
-        except Exception as e:
-            logger.debug(f"Runtime tools extraction failed: {e}")
-
-        # 2. Fallback to static analysis
-        static_tools = self._extract_tools(content)
-        if static_tools:
-            logger.debug(f"Using tools from static analysis: {len(static_tools)} tools")
-            return static_tools
-
-        # 3. Return empty list if unknown
-        logger.debug("Tools could not be determined")
-        return []
-
-    def _get_runtime_tools(self, agent_path: Path) -> list[str]:
-        """Get tools from runtime agent."""
-        try:
-            import sys
-            import importlib.util
-
-            # Add agent directory to path temporarily
-            original_path = sys.path[:]
-            sys.path.insert(0, str(agent_path))
-
-            try:
-                # Load agent module
-                agent_file = agent_path / "a2a_app.py"
-                spec = importlib.util.spec_from_file_location("temp_agent", agent_file)
-                if not spec or not spec.loader:
-                    return []
-
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
-
-                # Get root_agent and extract tools
-                if hasattr(module, "root_agent"):
-                    agent = module.root_agent
-                    if hasattr(agent, "tools") and agent.tools:
-                        tools = []
-                        for tool in agent.tools:
-                            if hasattr(tool, "__class__"):
-                                class_name = tool.__class__.__name__
-                                if class_name == "MCPToolset":
-                                    tools.append("MCP Server Tools")
-                                else:
-                                    # Convert class name to readable format
-                                    readable_name = " ".join(
-                                        re.findall("[A-Z][a-z]*", class_name)
-                                    )
-                                    tools.append(
-                                        readable_name if readable_name else class_name
-                                    )
-                        return tools
-
-            finally:
-                # Restore path
-                sys.path[:] = original_path
-
-        except Exception:
-            pass
-
-        return []
 
     def _detect_local_dependencies(self, agent_path: Path, content: str) -> list[str]:
         """Detect local agent dependencies by analyzing import statements."""
@@ -647,81 +373,4 @@ class GoogleADKAdapter(BaseFrameworkAdapter):
 
         return result
 
-    def _validate_complete_agent(self, agent_path: Path) -> ValidationResult:
-        """Validate complete A2A agent with a2a_app.py."""
-        result = ValidationResult(is_valid=True)
 
-        # Check required files
-        agent_file = agent_path / "a2a_app.py"
-        if not agent_file.exists():
-            result.errors.append("Missing required a2a_app.py file")
-            result.is_valid = False
-            return result
-
-        # Check if a2a_app.py can be imported (basic syntax check)
-        try:
-            content = agent_file.read_text(encoding="utf-8")
-            ast.parse(content)
-        except SyntaxError as e:
-            result.errors.append(f"Syntax error in a2a_app.py: {e}")
-            result.is_valid = False
-            return result
-
-        # Check for root_agent variable or import
-        if not self._has_root_agent(content) and not self._has_root_agent_import(
-            content
-        ):
-            result.errors.append("Missing root_agent variable or import in a2a_app.py")
-            result.is_valid = False
-
-        # Check for ADK imports
-        if not self._has_adk_imports(content):
-            result.errors.append("Missing Google ADK imports in a2a_app.py")
-            result.is_valid = False
-
-        return result
-
-    def _validate_minimal_agent(self, agent_path: Path) -> ValidationResult:
-        """Validate minimal agent structure with agent.py + __init__.py."""
-        result = ValidationResult(is_valid=True)
-
-        # Check required files
-        agent_file = agent_path / "agent.py"
-        init_file = agent_path / "__init__.py"
-
-        if not agent_file.exists():
-            result.errors.append("Missing required agent.py file")
-            result.is_valid = False
-
-        if not init_file.exists():
-            result.errors.append("Missing required __init__.py file")
-            result.is_valid = False
-
-        if not result.is_valid:
-            return result
-
-        # Check agent.py syntax and ADK imports
-        try:
-            agent_content = agent_file.read_text(encoding="utf-8")
-            ast.parse(agent_content)
-
-            if not self._has_adk_imports(agent_content):
-                result.errors.append("Missing Google ADK imports in agent.py")
-                result.is_valid = False
-        except SyntaxError as e:
-            result.errors.append(f"Syntax error in agent.py: {e}")
-            result.is_valid = False
-
-        # Check __init__.py syntax and root_agent import
-        try:
-            init_content = init_file.read_text(encoding="utf-8")
-            ast.parse(init_content)
-
-            if not self._has_root_agent_import(init_content):
-                result.errors.append("Missing root_agent import in __init__.py")
-                result.is_valid = False
-        except SyntaxError as e:
-            result.errors.append(f"Syntax error in __init__.py: {e}")
-            result.is_valid = False
-
-        return result
