@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 from ..adapters.base import AgentMetadata
 from ..shared.entrypoint_templates import UnifiedEntrypointGenerator, EntrypointContext
+from ..shared.chat_endpoints_generator import ChatEndpointsGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,7 @@ class UnifiedDockerfileGenerator:
     def __init__(self):
         self.base_image = "python:3.11-slim"
         self.entrypoint_generator = UnifiedEntrypointGenerator()
+        self.chat_endpoints_generator = ChatEndpointsGenerator()
 
         # Package manager configurations by distribution type
         self.package_managers = {
@@ -700,3 +702,22 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \\
         ]
 
         return commands
+
+    def _generate_chat_endpoints(self, framework_type: str) -> str:
+        """Generate chat endpoints code - delegated to ChatEndpointsGenerator."""
+        request_style = "starlette" if framework_type in ["adk", "strands"] else "fastapi"
+        return self.chat_endpoints_generator.generate_chat_endpoints(
+            framework_type, request_style, "localhost"
+        )
+
+    def _generate_adk_entrypoint(
+        self, agent_path: Path, metadata: AgentMetadata, add_ui: bool = False
+    ) -> str:
+        """Generate ADK entrypoint - legacy method for compatibility."""
+        return self.generate_entrypoint(agent_path, metadata, add_ui)
+
+    def _generate_strands_entrypoint(
+        self, agent_path: Path, metadata: AgentMetadata, add_ui: bool = False
+    ) -> str:
+        """Generate Strands entrypoint - legacy method for compatibility."""
+        return self.generate_entrypoint(agent_path, metadata, add_ui)

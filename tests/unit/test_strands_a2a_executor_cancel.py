@@ -13,15 +13,25 @@ class TestContextAwareStrandsA2AExecutorCancel:
 
     def create_mock_executor(self):
         """Create a mock ContextAwareStrandsA2AExecutor for testing."""
+        # Mock the strands import and create test classes
+        from unittest.mock import Mock
+
+        # Create a mock StrandsA2AExecutor class
+        class MockStrandsA2AExecutor:
+            def __init__(self, agent):
+                self.agent = agent
+
+        # Create execution environment with the mock class available
+        exec_globals = {"MockStrandsA2AExecutor": MockStrandsA2AExecutor}
+
         # Import the class dynamically to avoid import issues
         exec(
             """
-from strands.multiagent.a2a.executor import StrandsA2AExecutor
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 import logging as executor_logging
 
-class ContextAwareStrandsA2AExecutor(StrandsA2AExecutor):
+class ContextAwareStrandsA2AExecutor(MockStrandsA2AExecutor):
     '''Test version of ContextAwareStrandsA2AExecutor with cancel method.'''
     
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
@@ -93,11 +103,11 @@ class ContextAwareStrandsA2AExecutor(StrandsA2AExecutor):
                 # If we can't even send a message, just log it
                 executor_logging.getLogger(__name__).error("Failed to send cancellation message to event queue")
 """,
-            globals(),
+            exec_globals,
         )
 
         mock_agent = Mock()
-        return ContextAwareStrandsA2AExecutor(mock_agent)
+        return exec_globals["ContextAwareStrandsA2AExecutor"](mock_agent)
 
     def create_mock_context(
         self, with_task=True, task_state="working", has_context_id=True

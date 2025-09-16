@@ -94,11 +94,12 @@ class TestUIBuildManagerComprehensive:
         """Test build_ui when package.json doesn't exist."""
         manager = UIBuildManager()
         manager.package_json = tmp_path / "nonexistent_package.json"
+        manager.dist_dir = tmp_path / "nonexistent_dist"
 
         result = manager.build_ui()
 
         assert not result["success"]
-        assert "package.json not found" in result["error"]
+        assert "No pre-built UI assets available" in result["error"]
         assert "recommendation" in result
 
     @patch("subprocess.run")

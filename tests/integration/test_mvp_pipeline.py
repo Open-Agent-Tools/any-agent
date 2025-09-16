@@ -18,7 +18,7 @@ class TestMVPPipeline:
 
         # Path to our test agent
         test_agent_path = (
-            Path(__file__).parent.parent.parent / "examples" / "adk" / "agent_only"
+            Path(__file__).parent.parent.parent / "examples" / "Google_ADK" / "Testing_Tessie"
         )
 
         # Should detect the agent
@@ -29,7 +29,7 @@ class TestMVPPipeline:
         adapter = GoogleADKAdapter()
 
         test_agent_path = (
-            Path(__file__).parent.parent.parent / "examples" / "adk" / "agent_only"
+            Path(__file__).parent.parent.parent / "examples" / "Google_ADK" / "Testing_Tessie"
         )
 
         # Should validate successfully
@@ -41,7 +41,7 @@ class TestMVPPipeline:
         adapter = GoogleADKAdapter()
 
         test_agent_path = (
-            Path(__file__).parent.parent.parent / "examples" / "adk" / "agent_only"
+            Path(__file__).parent.parent.parent / "examples" / "Google_ADK" / "Testing_Tessie"
         )
 
         metadata = adapter.extract_metadata(test_agent_path)
@@ -55,7 +55,7 @@ class TestMVPPipeline:
         orchestrator = AgentOrchestrator()
 
         test_agent_path = (
-            Path(__file__).parent.parent.parent / "examples" / "adk" / "agent_only"
+            Path(__file__).parent.parent.parent / "examples" / "Google_ADK" / "Testing_Tessie"
         )
 
         adapter = orchestrator.detect_framework(test_agent_path)
@@ -100,7 +100,7 @@ class TestMVPPipeline:
 
         orchestrator = AgentOrchestrator()
         test_agent_path = (
-            Path(__file__).parent.parent.parent / "examples" / "adk" / "agent_only"
+            Path(__file__).parent.parent.parent / "examples" / "Google_ADK" / "Testing_Tessie"
         )
 
         # Run pipeline with mocked operations
@@ -148,7 +148,7 @@ class TestMVPPipeline:
             busy_port = sock.getsockname()[1]
 
             test_agent_path = (
-                Path(__file__).parent.parent.parent / "examples" / "adk" / "agent_only"
+                Path(__file__).parent.parent.parent / "examples" / "Google_ADK" / "Testing_Tessie"
             )
 
             # Try to run pipeline on busy port
