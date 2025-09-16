@@ -1,7 +1,7 @@
 """JSON-RPC 2.0 and A2A Protocol Message Validators."""
 
 import json
-from typing import Any, Dict, List, Optional, Union, Callable, Type
+from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass
 
 try:
