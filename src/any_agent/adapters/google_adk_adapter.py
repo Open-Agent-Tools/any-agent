@@ -39,7 +39,7 @@ class GoogleADKAdapter(BaseFrameworkAdapter):
                 return False
 
             # Check for ADK imports anywhere in the directory
-            if not self._has_adk_imports_in_directory(agent_path):
+            if not self._has_framework_imports_in_directory(agent_path, self._has_adk_imports):
                 logger.debug(f"No Google ADK imports found in {agent_path}")
                 return False
 
@@ -50,20 +50,6 @@ class GoogleADKAdapter(BaseFrameworkAdapter):
             logger.error(f"Error detecting ADK agent at {agent_path}: {e}")
             return False
 
-    def _has_adk_imports_in_directory(self, agent_path: Path) -> bool:
-        """Check if any Python file in the directory contains Google ADK imports."""
-        for py_file in agent_path.rglob("*.py"):
-            # Skip generated build artifacts in .any_agent directory
-            if ".any_agent" in str(py_file):
-                continue
-            try:
-                content = py_file.read_text(encoding="utf-8")
-                if self._has_adk_imports(content):
-                    return True
-            except Exception as e:
-                logger.debug(f"Error reading {py_file}: {e}")
-                continue
-        return False
 
 
 
@@ -79,22 +65,6 @@ class GoogleADKAdapter(BaseFrameworkAdapter):
                 return True
         return False
 
-    def _has_root_agent(self, content: str) -> bool:
-        """Check if content defines a root_agent variable."""
-        try:
-            tree = ast.parse(content)
-
-            for node in ast.walk(tree):
-                # Check for variable assignment: root_agent = ...
-                if isinstance(node, ast.Assign):
-                    for target in node.targets:
-                        if isinstance(target, ast.Name) and target.id == "root_agent":
-                            return True
-
-            return False
-        except SyntaxError as e:
-            logger.error(f"Syntax error parsing content: {e}")
-            return False
 
     def _has_root_agent_import(self, content: str) -> bool:
         """Check if content imports root_agent from agent module."""
@@ -119,14 +89,7 @@ class GoogleADKAdapter(BaseFrameworkAdapter):
     def extract_metadata(self, agent_path: Path) -> AgentMetadata:
         """Extract metadata from ADK agent."""
         # Extract from all Python files in the directory
-        all_content = ""
-        for py_file in agent_path.rglob("*.py"):
-            try:
-                content = py_file.read_text(encoding="utf-8")
-                all_content += content + "\n"
-            except Exception as e:
-                logger.debug(f"Error reading {py_file}: {e}")
-                continue
+        all_content = self._aggregate_file_contents(agent_path)
 
         metadata = AgentMetadata(
             name=self._extract_agent_name_from_directory(agent_path),
@@ -162,30 +125,7 @@ class GoogleADKAdapter(BaseFrameworkAdapter):
 
     def _extract_agent_name_from_content(self, content: str) -> Optional[str]:
         """Extract agent name from Agent() constructor in content."""
-        try:
-            tree = ast.parse(content)
-
-            # Look for Agent() constructor calls with name parameter
-            for node in ast.walk(tree):
-                if isinstance(node, ast.Call):
-                    # Check if this is an Agent() call
-                    if (
-                        isinstance(node.func, ast.Name) and node.func.id == "Agent"
-                    ) or (
-                        isinstance(node.func, ast.Attribute)
-                        and node.func.attr == "Agent"
-                    ):
-                        # Look for name parameter in keywords
-                        for keyword in node.keywords:
-                            if keyword.arg == "name" and isinstance(
-                                keyword.value, ast.Constant
-                            ):
-                                value = keyword.value.value
-                                return str(value) if value is not None else None
-        except Exception as e:
-            logger.debug(f"Error parsing content for agent name: {e}")
-
-        return None
+        return self._extract_agent_name_from_ast(content)
 
 
 
@@ -367,7 +307,7 @@ class GoogleADKAdapter(BaseFrameworkAdapter):
                 result.is_valid = False
 
         # Check for ADK imports anywhere in the directory
-        if not self._has_adk_imports_in_directory(agent_path):
+        if not self._has_framework_imports_in_directory(agent_path, self._has_adk_imports):
             result.errors.append("No Google ADK imports found in directory")
             result.is_valid = False
 

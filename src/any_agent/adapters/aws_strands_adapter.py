@@ -30,7 +30,7 @@ class AWSStrandsAdapter(BaseFrameworkAdapter):
                 return False
 
             # Check for Strands imports anywhere in the directory
-            if not self._has_strands_imports_in_directory(agent_path):
+            if not self._has_framework_imports_in_directory(agent_path, self._has_strands_imports):
                 logger.debug(f"No Strands imports found in {agent_path}")
                 return False
 
@@ -41,20 +41,6 @@ class AWSStrandsAdapter(BaseFrameworkAdapter):
             logger.error(f"Error detecting AWS Strands agent at {agent_path}: {e}")
             return False
 
-    def _has_strands_imports_in_directory(self, agent_path: Path) -> bool:
-        """Check if any Python file in the directory contains Strands imports."""
-        for py_file in agent_path.rglob("*.py"):
-            # Skip generated build artifacts in .any_agent directory
-            if ".any_agent" in str(py_file):
-                continue
-            try:
-                content = py_file.read_text(encoding="utf-8")
-                if self._has_strands_imports(content):
-                    return True
-            except Exception as e:
-                logger.debug(f"Error reading {py_file}: {e}")
-                continue
-        return False
 
     def _has_strands_imports(self, content: str) -> bool:
         """Check if content contains Strands imports."""
@@ -94,14 +80,7 @@ class AWSStrandsAdapter(BaseFrameworkAdapter):
                 logger.debug(f"Error reading agent.py: {e}")
 
         # Extract from all Python files as fallback
-        all_content = ""
-        for py_file in agent_path.rglob("*.py"):
-            try:
-                content = py_file.read_text(encoding="utf-8")
-                all_content += content + "\n"
-            except Exception as e:
-                logger.debug(f"Error reading {py_file}: {e}")
-                continue
+        all_content = self._aggregate_file_contents(agent_path)
 
         # Use agent.py content primarily, fall back to all content
         primary_content = agent_content if agent_content else all_content
@@ -122,23 +101,7 @@ class AWSStrandsAdapter(BaseFrameworkAdapter):
 
         try:
             content = agent_file.read_text(encoding="utf-8")
-            tree = ast.parse(content)
-
-            for node in ast.walk(tree):
-                if isinstance(node, ast.Call):
-                    # Check if this is an Agent() call
-                    if (
-                        isinstance(node.func, ast.Name) and node.func.id == "Agent"
-                    ) or (
-                        isinstance(node.func, ast.Attribute)
-                        and node.func.attr == "Agent"
-                    ):
-                        # Look for name parameter
-                        for keyword in node.keywords:
-                            if keyword.arg == "name" and isinstance(
-                                keyword.value, ast.Constant
-                            ):
-                                return str(keyword.value.value)
+            return self._extract_agent_name_from_ast(content)
         except Exception as e:
             logger.debug(f"Error extracting agent name: {e}")
 

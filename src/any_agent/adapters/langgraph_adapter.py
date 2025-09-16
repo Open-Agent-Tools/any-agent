@@ -30,7 +30,7 @@ class LangGraphAdapter(BaseFrameworkAdapter):
                 return False
 
             # Check for LangGraph imports anywhere in the directory
-            if not self._has_langgraph_imports_in_directory(agent_path):
+            if not self._has_framework_imports_in_directory(agent_path, self._has_langgraph_imports):
                 logger.debug(f"No LangGraph imports found in {agent_path}")
                 return False
 
@@ -41,17 +41,6 @@ class LangGraphAdapter(BaseFrameworkAdapter):
             logger.error(f"Error detecting LangGraph agent at {agent_path}: {e}")
             return False
 
-    def _has_langgraph_imports_in_directory(self, agent_path: Path) -> bool:
-        """Check if any Python file in the directory contains LangGraph imports."""
-        for py_file in agent_path.rglob("*.py"):
-            try:
-                content = py_file.read_text(encoding="utf-8")
-                if self._has_langgraph_imports(content):
-                    return True
-            except Exception as e:
-                logger.debug(f"Error reading {py_file}: {e}")
-                continue
-        return False
 
     def _has_langgraph_imports(self, content: str) -> bool:
         """Check if content contains LangGraph imports."""
@@ -77,14 +66,7 @@ class LangGraphAdapter(BaseFrameworkAdapter):
         )
 
         # Extract from all Python files in the directory
-        all_content = ""
-        for py_file in agent_path.rglob("*.py"):
-            try:
-                content = py_file.read_text(encoding="utf-8")
-                all_content += content + "\n"
-            except Exception as e:
-                logger.debug(f"Error reading {py_file}: {e}")
-                continue
+        all_content = self._aggregate_file_contents(agent_path)
 
         metadata.model = self._extract_model(all_content)
         metadata.description = self._extract_description(all_content)
@@ -133,23 +115,11 @@ class LangGraphAdapter(BaseFrameworkAdapter):
         result = ValidationResult(is_valid=True)
 
         # Check for LangGraph imports anywhere in the directory
-        if not self._has_langgraph_imports_in_directory(agent_path):
+        if not self._has_framework_imports_in_directory(agent_path, self._has_langgraph_imports):
             result.errors.append("No LangGraph imports found in directory")
             result.is_valid = False
 
-        # Check if any Python files exist
-        py_files = list(agent_path.rglob("*.py"))
-        if not py_files:
-            result.errors.append("No Python files found in agent directory")
-            result.is_valid = False
-
-        # Check for basic syntax in Python files
-        for py_file in py_files:
-            try:
-                content = py_file.read_text(encoding="utf-8")
-                ast.parse(content)
-            except SyntaxError as e:
-                result.errors.append(f"Syntax error in {py_file.name}: {e}")
-                result.is_valid = False
+        # Check Python syntax
+        self._validate_python_syntax(agent_path, result)
 
         return result
