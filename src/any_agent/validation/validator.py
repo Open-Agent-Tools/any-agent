@@ -1,7 +1,7 @@
 """JSON-RPC 2.0 and A2A Protocol Message Validators."""
 
 import json
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Callable, Type
 from dataclasses import dataclass
 
 try:
@@ -9,8 +9,8 @@ try:
 
     JSONSCHEMA_AVAILABLE = True
 except ImportError:
-    validate = None
-    ValidationError = None
+    validate = None  # type: ignore
+    ValidationError = None  # type: ignore
     JSONSCHEMA_AVAILABLE = False
 
 

@@ -705,7 +705,9 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \\
 
     def _generate_chat_endpoints(self, framework_type: str) -> str:
         """Generate chat endpoints code - delegated to ChatEndpointsGenerator."""
-        request_style = "starlette" if framework_type in ["adk", "strands"] else "fastapi"
+        request_style = (
+            "starlette" if framework_type in ["adk", "strands"] else "fastapi"
+        )
         return self.chat_endpoints_generator.generate_chat_endpoints(
             framework_type, request_style, "localhost"
         )

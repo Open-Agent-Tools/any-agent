@@ -5,10 +5,11 @@ import json
 from pathlib import Path
 
 from .manager import UIBuildManager
+from any_agent import __version__
 
 
 @click.group()
-@click.version_option()
+@click.version_option(version=__version__)
 def ui_cli() -> None:
     """Any Agent UI Management - Build and manage the React SPA interface."""
     pass

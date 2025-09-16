@@ -11,10 +11,11 @@ import json
 from .client import A2AValidationClient, A2AValidationConfig
 from .engine import ValidationDiscoveryEngine, ValidationExecutionEngine
 from .a2a_message_validator import A2AMessageValidator
+from any_agent import __version__
 
 
 @click.group()
-@click.version_option()
+@click.version_option(version=__version__)
 def cli() -> None:
     """A2A Protocol Validation Harness - Universal validation for Agent-to-Agent communication."""
     pass
