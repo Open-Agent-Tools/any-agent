@@ -243,7 +243,7 @@ def a2a_reporter() -> A2ATestReporter:
 
 
 def pytest_terminal_summary(
-    terminalreporter: Any, exitstatus: int, config: Any
+    terminalreporter: Any, _exitstatus: int, config: Any
 ) -> None:
     """Add A2A test summary to pytest output."""
     if not _a2a_reporter.results:

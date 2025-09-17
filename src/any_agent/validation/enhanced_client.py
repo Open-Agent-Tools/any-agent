@@ -143,7 +143,7 @@ class EnhancedA2AValidationClient(A2AValidationClient):
             return await self._test_a2a_json_rpc(message, a2a_message)
 
     async def _test_a2a_json_rpc(
-        self, original_message: str, a2a_message: Dict[str, Any]
+        self, _original_message: str, a2a_message: Dict[str, Any]
     ) -> EnhancedA2AValidationResult:
         """Test A2A via JSON-RPC send_message method."""
         result = await self.call_method("send_message", {"message": a2a_message})
@@ -172,7 +172,7 @@ class EnhancedA2AValidationClient(A2AValidationClient):
         return enhanced_result
 
     async def _test_a2a_rest_api(
-        self, original_message: str, a2a_message: Dict[str, Any]
+        self, _original_message: str, a2a_message: Dict[str, Any]
     ) -> EnhancedA2AValidationResult:
         """Test A2A via REST API /tasks/send endpoint."""
         import time
