@@ -8,7 +8,10 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 
-from .agent_context import AgentContextManager, AgentBuildContext, LocalhostServerInfo, DockerInstanceInfo
+from .agent_context import (
+    AgentContextManager,
+    AgentBuildContext,
+)
 from ..api.helmsman_integration import HelsmanClient
 
 logger = logging.getLogger(__name__)
@@ -123,7 +126,9 @@ class AgentRemover:
 
         # Context is now REQUIRED for safe removal
         if not context_manager:
-            logger.warning("No context manager provided - cannot safely identify artifacts")
+            logger.warning(
+                "No context manager provided - cannot safely identify artifacts"
+            )
             return artifacts
 
         context_info = context_manager.load_context()
@@ -136,9 +141,13 @@ class AgentRemover:
         # Use ONLY context information for safe, precise targeting
         artifacts.containers = self._find_containers_from_context(context_info)
         artifacts.images = self._find_images_from_context(context_info)
-        artifacts.helmsman_records = self._find_helmsman_records_from_context(context_info)
+        artifacts.helmsman_records = self._find_helmsman_records_from_context(
+            context_info
+        )
         artifacts.build_contexts = self._find_build_contexts_from_context(context_info)
-        artifacts.localhost_servers = self._find_localhost_servers_from_context(context_info)
+        artifacts.localhost_servers = self._find_localhost_servers_from_context(
+            context_info
+        )
 
         return artifacts
 
@@ -156,7 +165,9 @@ class AgentRemover:
             if context.docker_instances:
                 for docker_info in context.docker_instances:
                     try:
-                        container = self.docker_client.containers.get(docker_info.container_id)
+                        container = self.docker_client.containers.get(
+                            docker_info.container_id
+                        )
                         containers.append(
                             {
                                 "id": container.id,
@@ -167,12 +178,16 @@ class AgentRemover:
                             }
                         )
                     except docker.errors.NotFound:
-                        logger.warning(f"Container {docker_info.container_id} (port {docker_info.port}) from context not found")
+                        logger.warning(
+                            f"Container {docker_info.container_id} (port {docker_info.port}) from context not found"
+                        )
 
             # Check legacy single Docker instance (for backward compatibility)
             elif context.docker_instance:
                 try:
-                    container = self.docker_client.containers.get(context.docker_instance.container_id)
+                    container = self.docker_client.containers.get(
+                        context.docker_instance.container_id
+                    )
                     containers.append(
                         {
                             "id": container.id,
@@ -234,12 +249,16 @@ class AgentRemover:
                             }
                         )
                     except docker.errors.ImageNotFound:
-                        logger.warning(f"Image {docker_info.image_id} (port {docker_info.port}) from context not found")
+                        logger.warning(
+                            f"Image {docker_info.image_id} (port {docker_info.port}) from context not found"
+                        )
 
             # Check legacy single Docker instance (for backward compatibility)
             elif context.docker_instance:
                 try:
-                    image = self.docker_client.images.get(context.docker_instance.image_id)
+                    image = self.docker_client.images.get(
+                        context.docker_instance.image_id
+                    )
                     images.append(
                         {
                             "id": image.id,
@@ -267,7 +286,9 @@ class AgentRemover:
                         }
                     )
                 except docker.errors.ImageNotFound:
-                    logger.warning(f"Image {context.image_id} from legacy context not found")
+                    logger.warning(
+                        f"Image {context.image_id} from legacy context not found"
+                    )
 
         except Exception as e:
             logger.error(f"Error finding images from context: {e}")
@@ -320,7 +341,9 @@ class AgentRemover:
                 if path.exists():
                     contexts.append(path)
                 else:
-                    logger.warning(f"Build context path from context does not exist: {path}")
+                    logger.warning(
+                        f"Build context path from context does not exist: {path}"
+                    )
 
         except Exception as e:
             logger.error(f"Error finding build contexts from context: {e}")
@@ -344,16 +367,21 @@ class AgentRemover:
                                 {
                                     "pid": server_info.pid,
                                     "name": "uvicorn",
-                                    "cmdline": server_info.command_line or f"uvicorn localhost_app:app --port {server_info.port}",
+                                    "cmdline": server_info.command_line
+                                    or f"uvicorn localhost_app:app --port {server_info.port}",
                                     "cwd": server_info.working_directory,
                                     "port": server_info.port,
                                     "source": "context_localhost_servers",
                                 }
                             )
                         else:
-                            logger.info(f"Process {server_info.pid} (port {server_info.port}) from context is no longer running")
+                            logger.info(
+                                f"Process {server_info.pid} (port {server_info.port}) from context is no longer running"
+                            )
                     except psutil.NoSuchProcess:
-                        logger.info(f"Process {server_info.pid} (port {server_info.port}) from context no longer exists")
+                        logger.info(
+                            f"Process {server_info.pid} (port {server_info.port}) from context no longer exists"
+                        )
 
             # Check legacy single localhost server (for backward compatibility)
             elif context.localhost_server:
@@ -364,16 +392,21 @@ class AgentRemover:
                             {
                                 "pid": context.localhost_server.pid,
                                 "name": "uvicorn",
-                                "cmdline": context.localhost_server.command_line or f"uvicorn localhost_app:app --port {context.localhost_server.port}",
+                                "cmdline": context.localhost_server.command_line
+                                or f"uvicorn localhost_app:app --port {context.localhost_server.port}",
                                 "cwd": context.localhost_server.working_directory,
                                 "port": context.localhost_server.port,
                                 "source": "context_localhost_server",
                             }
                         )
                     else:
-                        logger.info(f"Process {context.localhost_server.pid} from context is no longer running")
+                        logger.info(
+                            f"Process {context.localhost_server.pid} from context is no longer running"
+                        )
                 except psutil.NoSuchProcess:
-                    logger.info(f"Process {context.localhost_server.pid} from context no longer exists")
+                    logger.info(
+                        f"Process {context.localhost_server.pid} from context no longer exists"
+                    )
 
         except Exception as e:
             logger.error(f"Error finding localhost servers from context: {e}")

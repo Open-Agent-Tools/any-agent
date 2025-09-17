@@ -150,7 +150,7 @@ class LocalhostOrchestrator:
                 agent_name=metadata.name,
                 framework=adapter.__class__.__name__.replace("Adapter", "").lower(),
                 deployment_type="localhost",
-                model=getattr(metadata, 'model', None)
+                model=getattr(metadata, "model", None),
             )
 
             # Step 5: Load Environment (reuse existing, but make optional for localhost)
@@ -258,11 +258,13 @@ class LocalhostOrchestrator:
                             host="localhost",
                             app_file_path=str(app_file),
                             working_directory=str(app_file.parent),
-                            command_line=f"uvicorn localhost_app:app --host localhost --port {port}"
+                            command_line=f"uvicorn localhost_app:app --host localhost --port {port}",
                         )
                         print("   📝 Updated context with server information")
                 except Exception as context_error:
-                    logger.warning(f"Failed to update context with server info: {context_error}")
+                    logger.warning(
+                        f"Failed to update context with server info: {context_error}"
+                    )
 
                 # Step 9: Setup File Watching for Hot Reload
                 if enable_hot_reload:

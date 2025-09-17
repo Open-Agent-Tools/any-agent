@@ -1,4 +1,4 @@
-# Technical Specification: Any Agent Framework v0.1.7
+# Technical Specification: Any Agent Framework v0.2.0
 
 ## System Architecture
 

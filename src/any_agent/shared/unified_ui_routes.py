@@ -51,7 +51,6 @@ class UIRouteBuilder(ABC):
         return self.config.static_dir
 
 
-
 class StarletteUIRouteBuilder(UIRouteBuilder):
     """Starlette-style UI route builder."""
 

@@ -1,4 +1,4 @@
-# User Guide: Any Agent Framework v0.1.7
+# User Guide: Any Agent Framework v0.2.0
 
 ## Installation
 

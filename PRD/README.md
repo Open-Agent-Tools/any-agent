@@ -24,7 +24,7 @@ This directory contains the complete product definition for the Any Agent Framew
 
 #### [03_implementation_status.md](03_implementation_status.md)
 **Current Capabilities**
-- Release status: Production ready v0.1.7
+- Release status: Production ready v0.2.0
 - Framework implementation status (Google ADK, AWS Strands production; LangChain, CrewAI detection ready)
 - Quality assurance metrics and validation
 - Next release roadmap and limitations
@@ -48,7 +48,7 @@ This directory contains the complete product definition for the Any Agent Framew
 
 ## Product Status
 
-**Version**: 0.1.7 (Production Ready)
+**Version**: 0.2.0 (Production Ready)
 **PyPI**: `pip install any-agent-wrapper`
 **Framework Support**: Google ADK, AWS Strands (production); LangChain, CrewAI (detection ready)
 **Test Coverage**: 338 tests passing (100% success rate)

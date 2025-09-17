@@ -76,7 +76,7 @@ All agents expose:
 
 ## Status
 
-**Version**: 0.1.7 (Fully Functional)
+**Version**: 0.2.0 (Fully Functional)
 **PyPI**: `pip install any-agent-wrapper`
 **Test Coverage**: 381 tests passing
 **Architecture**: Consolidated with <5% code duplication

@@ -132,7 +132,9 @@ class AgentContextManager:
 
             # Convert nested dicts to dataclasses
             if "localhost_server" in data and data["localhost_server"]:
-                data["localhost_server"] = LocalhostServerInfo(**data["localhost_server"])
+                data["localhost_server"] = LocalhostServerInfo(
+                    **data["localhost_server"]
+                )
 
             if "docker_instance" in data and data["docker_instance"]:
                 data["docker_instance"] = DockerInstanceInfo(**data["docker_instance"])
@@ -140,12 +142,14 @@ class AgentContextManager:
             # Convert multi-instance lists
             if "localhost_servers" in data and data["localhost_servers"]:
                 data["localhost_servers"] = [
-                    LocalhostServerInfo(**server_data) for server_data in data["localhost_servers"]
+                    LocalhostServerInfo(**server_data)
+                    for server_data in data["localhost_servers"]
                 ]
 
             if "docker_instances" in data and data["docker_instances"]:
                 data["docker_instances"] = [
-                    DockerInstanceInfo(**instance_data) for instance_data in data["docker_instances"]
+                    DockerInstanceInfo(**instance_data)
+                    for instance_data in data["docker_instances"]
                 ]
 
             # Convert dict back to dataclass
@@ -210,7 +214,7 @@ class AgentContextManager:
         container_id: str,
         image_name: str,
         image_id: str,
-        port: int
+        port: int,
     ):
         """Update context with Docker instance information."""
         context = self.load_context()
@@ -223,11 +227,13 @@ class AgentContextManager:
             container_id=container_id,
             image_name=image_name,
             image_id=image_id,
-            port=port
+            port=port,
         )
 
         # Add to multi-instance list (remove any existing entry for same container)
-        context.docker_instances = [d for d in context.docker_instances if d.container_id != container_id]
+        context.docker_instances = [
+            d for d in context.docker_instances if d.container_id != container_id
+        ]
         context.docker_instances.append(new_instance)
 
         # Update legacy fields for backward compatibility
@@ -259,7 +265,7 @@ class AgentContextManager:
         host: str = "localhost",
         app_file_path: Optional[str] = None,
         working_directory: Optional[str] = None,
-        command_line: Optional[str] = None
+        command_line: Optional[str] = None,
     ):
         """Update context with localhost server information."""
         context = self.load_context()
@@ -273,11 +279,13 @@ class AgentContextManager:
             host=host,
             app_file_path=app_file_path,
             working_directory=working_directory,
-            command_line=command_line
+            command_line=command_line,
         )
 
         # Add to multi-instance list (remove any existing entry for same port)
-        context.localhost_servers = [s for s in context.localhost_servers if s.port != port]
+        context.localhost_servers = [
+            s for s in context.localhost_servers if s.port != port
+        ]
         context.localhost_servers.append(new_server)
 
         # Update legacy fields for backward compatibility
@@ -338,13 +346,15 @@ class AgentContextManager:
             artifacts["docker_containers"] = [context.docker_instance.container_id]
             artifacts["docker_images"] = [context.docker_instance.image_id]
         elif context.container_name:  # Fallback to legacy fields
-            artifacts["docker_containers"] = [context.container_id or context.container_name]
+            artifacts["docker_containers"] = [
+                context.container_id or context.container_name
+            ]
             if context.image_name:
                 artifacts["docker_images"] = [context.image_id or context.image_name]
 
         # Localhost server artifacts
         if context.localhost_server:
-            artifacts["localhost_servers"] = [context.localhost_server.pid]
+            artifacts["localhost_servers"] = [str(context.localhost_server.pid)]
 
         # Helmsman artifacts
         if context.helmsman_agent_id:
