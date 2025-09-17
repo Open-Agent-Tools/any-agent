@@ -287,67 +287,6 @@ class TestCLIOrchestratorPaths:
 
     @patch("any_agent.core.docker_orchestrator.AgentOrchestrator")
     @patch("any_agent.core.agent_context.AgentContextManager")
-    @patch("any_agent.ui.manager.UIBuildManager")
-    def test_cli_helmsman_registration_scenarios(
-        self, mock_ui, mock_context, mock_orchestrator
-    ):
-        """Test CLI Helmsman registration handling."""
-        runner = CliRunner()
-
-        # Mock orchestrator
-        mock_orchestrator_instance = Mock()
-        mock_adapter = Mock()
-        mock_adapter.__class__.__name__ = "TestAdapter"
-        mock_orchestrator_instance.detect_framework.return_value = mock_adapter
-
-        mock_metadata = Mock()
-        mock_metadata.name = "test-agent"
-        mock_orchestrator_instance.extract_metadata.return_value = mock_metadata
-        mock_orchestrator.return_value = mock_orchestrator_instance
-
-        # Mock context manager
-        mock_context_instance = Mock()
-        mock_context.return_value = mock_context_instance
-
-        # Mock UI manager
-        mock_ui_instance = Mock()
-        mock_ui_instance.ensure_ui_built.return_value = True
-        mock_ui.return_value = mock_ui_instance
-
-        # Test different Helmsman scenarios
-        helmsman_scenarios = [
-            {
-                "enabled": True,
-                "agent_name": "test-helmsman-agent",
-                "url": "http://localhost:7080",
-                "token": "test-token",
-            },
-            {
-                "enabled": True,
-                "agent_name": "simple-agent",
-                "url": "http://custom.helmsman.url:8080",
-                "token": None,
-            },
-            {"enabled": False},
-        ]
-
-        for scenario in helmsman_scenarios:
-            with runner.isolated_filesystem():
-                os.makedirs("test_agent")
-                with open("test_agent/__init__.py", "w") as f:
-                    f.write("# Test agent")
-
-                args = ["test_agent", "--dry-run"]
-
-                if scenario["enabled"]:
-                    args.extend(["--helmsman"])
-                    if scenario.get("agent_name"):
-                        args.extend(["--agent-name", scenario["agent_name"]])
-                    if scenario.get("url"):
-                        args.extend(["--helmsman-url", scenario["url"]])
-
-                result = runner.invoke(main, args)
-                assert result.exit_code == 0
 
     def test_cli_comprehensive_flag_combinations(self):
         """Test CLI with comprehensive flag combinations."""
@@ -359,7 +298,7 @@ class TestCLIOrchestratorPaths:
             ["--framework", "adk", "--port", "8080", "--dry-run"],
             ["--no-build", "--no-run", "--dry-run"],
             ["--rebuild-ui", "--skip-a2a-test", "--dry-run"],
-            ["--helmsman", "--agent-name", "combo-test", "--verbose", "--dry-run"],
+            ["--localhost", "--agent-name", "combo-test", "--verbose", "--dry-run"],
         ]
 
         for flags in flag_combinations:

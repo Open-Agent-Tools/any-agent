@@ -105,10 +105,10 @@ class ChatEndpointsGenerator:
                 return JSONResponse({{"success": False, "error": str(error)}}, status_code=500)
 
         # Register chat endpoints
-        app.post("/api/chat/create")(create_chat_session_endpoint)
-        app.post("/api/chat/send")(send_chat_message_endpoint)
-        app.post("/api/chat/cleanup")(cleanup_chat_session_endpoint)
-        app.post("/api/chat/cancel")(cancel_chat_task_endpoint)
+        app.post("/chat/create-session")(create_chat_session_endpoint)
+        app.post("/chat/send-message")(send_chat_message_endpoint)
+        app.post("/chat/cleanup-session")(cleanup_chat_session_endpoint)
+        app.post("/chat/cancel-task")(cancel_chat_task_endpoint)
 
         logger.info("Chat endpoints added successfully")
 
@@ -218,10 +218,10 @@ class ChatEndpointsGenerator:
 
         # Register chat endpoints
         from starlette.routing import Route
-        app.mount("/api/chat/create", Route("/", create_chat_session_endpoint, methods=["POST"]))
-        app.mount("/api/chat/send", Route("/", send_chat_message_endpoint, methods=["POST"]))
-        app.mount("/api/chat/cleanup", Route("/", cleanup_chat_session_endpoint, methods=["POST"]))
-        app.mount("/api/chat/cancel", Route("/", cancel_chat_task_endpoint, methods=["POST"]))
+        app.mount("/chat/create-session", Route("/", create_chat_session_endpoint, methods=["POST"]))
+        app.mount("/chat/send-message", Route("/", send_chat_message_endpoint, methods=["POST"]))
+        app.mount("/chat/cleanup-session", Route("/", cleanup_chat_session_endpoint, methods=["POST"]))
+        app.mount("/chat/cancel-task", Route("/", cancel_chat_task_endpoint, methods=["POST"]))
 
         logger.info("Chat endpoints added successfully")
 

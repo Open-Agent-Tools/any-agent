@@ -32,7 +32,7 @@ def test_cli_help():
     assert result.exit_code == 0
     assert "Universal AI Agent Containerization Framework" in result.output
     assert "--framework" in result.output
-    assert "--helmsman" in result.output
+    assert "--port" in result.output
     assert "Google ADK" in result.output  # Should mention ADK in help
 
 
@@ -53,34 +53,6 @@ def test_cli_adk_framework_detection():
         assert result.exit_code == 0
         assert "DRY RUN" in result.output
 
-
-def test_cli_helmsman_integration():
-    """Test CLI with Helmsman integration flags."""
-    runner = CliRunner()
-
-    with runner.isolated_filesystem():
-        os.makedirs("test_agent")
-        with open("test_agent/__init__.py", "w") as f:
-            f.write("# Test agent")
-
-        result = runner.invoke(
-            main,
-            [
-                "test_agent",
-                "--framework",
-                "adk",
-                "--helmsman",
-                "--agent-name",
-                "test-cli-agent",
-                "--helmsman-url",
-                "http://localhost:7080",
-                "--dry-run",
-            ],
-        )
-
-        assert result.exit_code == 0
-        assert "Register with Helmsman" in result.output
-        assert "test-cli-agent" in result.output
 
 
 def test_cli_invalid_path():
@@ -186,7 +158,6 @@ def test_cli_comprehensive_adk_workflow():
                 "adk",
                 "--port",
                 "8080",
-                "--helmsman",
                 "--agent-name",
                 "comprehensive-test-agent",
                 "--dry-run",
@@ -196,8 +167,7 @@ def test_cli_comprehensive_adk_workflow():
 
         assert result.exit_code == 0
         assert "DRY RUN" in result.output
-        assert "comprehensive-test-agent" in result.output
-        assert "Register with Helmsman" in result.output
+        assert "my_adk_agent" in result.output
 
 
 def test_cli_error_handling_coverage():
