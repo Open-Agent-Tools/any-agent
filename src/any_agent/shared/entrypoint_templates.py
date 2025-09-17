@@ -234,6 +234,9 @@ logger = logging.getLogger(__name__)
 {agent_loader}
 
 try:
+    # Import URL builder for agent card generation
+    from any_agent.shared.url_builder import get_url_builder
+
     logger.info("Loading Strands agent...")
     root_agent = load_agent()
     logger.info("Strands agent loaded successfully")
@@ -266,7 +269,8 @@ try:
     from a2a.types import AgentCapabilities, AgentCard, AgentSkill
     
     # Create Strands A2A server with custom executor
-    logger.info(f"Creating Strands A2A server for port {context.port}...")
+    agent_port = int(os.getenv("AGENT_PORT", "{context.port}"))
+    logger.info(f"Creating Strands A2A server for port {{agent_port}}...")
     
     # Create agent card with capabilities and skills
     def generate_agent_card():
@@ -285,7 +289,7 @@ try:
         return AgentCard(
             name=f"{context.agent_name} Agent",
             description=f"Containerized AWS Strands agent",
-            url=get_url_builder(context.deployment_type).base_url(context.port),
+            url=get_url_builder("{context.deployment_type}").default_agent_url(agent_port),
             version="1.0.0",
             defaultInputModes=["text"],
             defaultOutputModes=["text"],
@@ -326,10 +330,10 @@ try:
     
     {ui_routes}
     
-    logger.info(f"🌐 A2A server ready on port {{context.port}}")
-    url_builder = get_url_builder(context.deployment_type)
-    logger.info(f"📋 Agent card: {{url_builder.agent_card_url(context.port)}}")
-    logger.info(f"🏥 Health check: {{url_builder.health_url(context.port)}}")
+    logger.info(f"🌐 A2A server ready on port {{agent_port}}")
+    url_builder = get_url_builder("{context.deployment_type}")
+    logger.info(f"📋 Agent card: {{url_builder.localhost_builder.agent_card_url(agent_port)}}")
+    logger.info(f"🏥 Health check: {{url_builder.localhost_builder.health_url(agent_port)}}")
 
 except Exception as e:
     logger.error(f"❌ Failed to create A2A server: {{e}}")
@@ -361,7 +365,8 @@ except Exception as e:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="localhost", port={context.port})
+    port = int(os.getenv("AGENT_PORT", "{context.port}"))
+    uvicorn.run(app, host="localhost", port=port)
 '''
         return entrypoint_content
 

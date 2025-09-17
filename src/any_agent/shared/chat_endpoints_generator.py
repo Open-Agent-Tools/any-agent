@@ -218,10 +218,11 @@ class ChatEndpointsGenerator:
 
         # Register chat endpoints
         from starlette.routing import Route
-        app.mount("/chat/create-session", Route("/", create_chat_session_endpoint, methods=["POST"]))
-        app.mount("/chat/send-message", Route("/", send_chat_message_endpoint, methods=["POST"]))
-        app.mount("/chat/cleanup-session", Route("/", cleanup_chat_session_endpoint, methods=["POST"]))
-        app.mount("/chat/cancel-task", Route("/", cancel_chat_task_endpoint, methods=["POST"]))
+        chat_create_route = Route("/chat/create-session", create_chat_session_endpoint, methods=["POST"])
+        chat_send_route = Route("/chat/send-message", send_chat_message_endpoint, methods=["POST"])
+        chat_cleanup_route = Route("/chat/cleanup-session", cleanup_chat_session_endpoint, methods=["POST"])
+        chat_cancel_route = Route("/chat/cancel-task", cancel_chat_task_endpoint, methods=["POST"])
+        app.routes.extend([chat_create_route, chat_send_route, chat_cleanup_route, chat_cancel_route])
 
         logger.info("Chat endpoints added successfully")
 

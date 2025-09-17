@@ -11,6 +11,39 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class LocalhostServerInfo:
+    """Information about a localhost development server."""
+
+    pid: int
+    port: int
+    host: str = "localhost"
+    app_file_path: Optional[str] = None
+    working_directory: Optional[str] = None
+    command_line: Optional[str] = None
+    start_timestamp: str = ""
+
+    def __post_init__(self):
+        if not self.start_timestamp:
+            self.start_timestamp = datetime.utcnow().isoformat()
+
+
+@dataclass
+class DockerInstanceInfo:
+    """Information about a Docker instance."""
+
+    container_name: str
+    container_id: str
+    image_name: str
+    image_id: str
+    port: int
+    start_timestamp: str = ""
+
+    def __post_init__(self):
+        if not self.start_timestamp:
+            self.start_timestamp = datetime.utcnow().isoformat()
+
+
+@dataclass
 class AgentBuildContext:
     """Context information for a built agent."""
 
@@ -24,12 +57,18 @@ class AgentBuildContext:
     # Custom names and identifiers
     custom_agent_name: Optional[str] = None  # CLI --agent-name override
 
-    # Docker artifacts
-    container_name: Optional[str] = None
-    container_id: Optional[str] = None
-    image_name: Optional[str] = None
-    image_id: Optional[str] = None
-    port: Optional[int] = None
+    # Deployment mode (can be "mixed" for multiple types)
+    deployment_type: str = "docker"  # "docker", "localhost", or "mixed"
+
+    # Multiple Docker instances (supports multiple containers/ports)
+    docker_instances: List[DockerInstanceInfo] = field(default_factory=list)
+
+    # Multiple Localhost servers (supports multiple ports)
+    localhost_servers: List[LocalhostServerInfo] = field(default_factory=list)
+
+    # Legacy single instance fields (for backward compatibility)
+    docker_instance: Optional[DockerInstanceInfo] = None
+    localhost_server: Optional[LocalhostServerInfo] = None
 
     # Helmsman integration
     helmsman_agent_id: Optional[str] = None
@@ -42,6 +81,13 @@ class AgentBuildContext:
     # Status tracking
     status: str = "built"  # built, running, stopped, removed
     removal_log: List[Dict[str, Any]] = field(default_factory=list)
+
+    # Legacy fields for backward compatibility
+    container_name: Optional[str] = None
+    container_id: Optional[str] = None
+    image_name: Optional[str] = None
+    image_id: Optional[str] = None
+    port: Optional[int] = None
 
     def __post_init__(self):
         if not self.build_timestamp:
@@ -84,6 +130,24 @@ class AgentContextManager:
                 if not data:
                     return None
 
+            # Convert nested dicts to dataclasses
+            if "localhost_server" in data and data["localhost_server"]:
+                data["localhost_server"] = LocalhostServerInfo(**data["localhost_server"])
+
+            if "docker_instance" in data and data["docker_instance"]:
+                data["docker_instance"] = DockerInstanceInfo(**data["docker_instance"])
+
+            # Convert multi-instance lists
+            if "localhost_servers" in data and data["localhost_servers"]:
+                data["localhost_servers"] = [
+                    LocalhostServerInfo(**server_data) for server_data in data["localhost_servers"]
+                ]
+
+            if "docker_instances" in data and data["docker_instances"]:
+                data["docker_instances"] = [
+                    DockerInstanceInfo(**instance_data) for instance_data in data["docker_instances"]
+                ]
+
             # Convert dict back to dataclass
             return AgentBuildContext(**data)
 
@@ -125,17 +189,112 @@ class AgentContextManager:
         return context
 
     def update_container_info(self, container_name: str, container_id: str, port: int):
-        """Update context with container information."""
+        """Update context with container information (legacy method for backward compatibility)."""
         context = self.load_context()
         if not context:
             logger.warning("No context found to update container info")
             return
 
+        # Update both new and legacy fields
         context.container_name = container_name
         context.container_id = container_id
         context.port = port
         context.status = "running"
 
+        self.save_context(context)
+        return context
+
+    def update_docker_instance(
+        self,
+        container_name: str,
+        container_id: str,
+        image_name: str,
+        image_id: str,
+        port: int
+    ):
+        """Update context with Docker instance information."""
+        context = self.load_context()
+        if not context:
+            logger.warning("No context found to update Docker instance info")
+            return
+
+        new_instance = DockerInstanceInfo(
+            container_name=container_name,
+            container_id=container_id,
+            image_name=image_name,
+            image_id=image_id,
+            port=port
+        )
+
+        # Add to multi-instance list (remove any existing entry for same container)
+        context.docker_instances = [d for d in context.docker_instances if d.container_id != container_id]
+        context.docker_instances.append(new_instance)
+
+        # Update legacy fields for backward compatibility
+        context.docker_instance = new_instance
+        context.container_name = container_name
+        context.container_id = container_id
+        context.image_name = image_name
+        context.image_id = image_id
+        context.port = port
+
+        # Update deployment type
+        has_docker = bool(context.docker_instances)
+        has_localhost = bool(context.localhost_servers or context.localhost_server)
+        if has_docker and has_localhost:
+            context.deployment_type = "mixed"
+        elif has_docker:
+            context.deployment_type = "docker"
+        else:
+            context.deployment_type = "localhost"
+
+        context.status = "running"
+        self.save_context(context)
+        return context
+
+    def update_localhost_server(
+        self,
+        pid: int,
+        port: int,
+        host: str = "localhost",
+        app_file_path: Optional[str] = None,
+        working_directory: Optional[str] = None,
+        command_line: Optional[str] = None
+    ):
+        """Update context with localhost server information."""
+        context = self.load_context()
+        if not context:
+            logger.warning("No context found to update localhost server info")
+            return
+
+        new_server = LocalhostServerInfo(
+            pid=pid,
+            port=port,
+            host=host,
+            app_file_path=app_file_path,
+            working_directory=working_directory,
+            command_line=command_line
+        )
+
+        # Add to multi-instance list (remove any existing entry for same port)
+        context.localhost_servers = [s for s in context.localhost_servers if s.port != port]
+        context.localhost_servers.append(new_server)
+
+        # Update legacy fields for backward compatibility
+        context.localhost_server = new_server
+        context.port = port
+
+        # Update deployment type
+        has_docker = bool(context.docker_instances or context.docker_instance)
+        has_localhost = bool(context.localhost_servers)
+        if has_docker and has_localhost:
+            context.deployment_type = "mixed"
+        elif has_localhost:
+            context.deployment_type = "localhost"
+        else:
+            context.deployment_type = "docker"
+
+        context.status = "running"
         self.save_context(context)
         return context
 
@@ -174,12 +333,24 @@ class AgentContextManager:
 
         artifacts = {}
 
-        if context.container_name:
-            artifacts["containers"] = [context.container_name]
-        if context.image_name:
-            artifacts["images"] = [context.image_name]
+        # Docker artifacts
+        if context.docker_instance:
+            artifacts["docker_containers"] = [context.docker_instance.container_id]
+            artifacts["docker_images"] = [context.docker_instance.image_id]
+        elif context.container_name:  # Fallback to legacy fields
+            artifacts["docker_containers"] = [context.container_id or context.container_name]
+            if context.image_name:
+                artifacts["docker_images"] = [context.image_id or context.image_name]
+
+        # Localhost server artifacts
+        if context.localhost_server:
+            artifacts["localhost_servers"] = [context.localhost_server.pid]
+
+        # Helmsman artifacts
         if context.helmsman_agent_id:
             artifacts["helmsman_ids"] = [context.helmsman_agent_id]
+
+        # Build artifacts
         if context.build_context_path:
             artifacts["build_contexts"] = [context.build_context_path]
 

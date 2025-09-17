@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 
-from .agent_context import AgentContextManager, AgentBuildContext
+from .agent_context import AgentContextManager, AgentBuildContext, LocalhostServerInfo, DockerInstanceInfo
 from ..api.helmsman_integration import HelsmanClient
 
 logger = logging.getLogger(__name__)
@@ -103,14 +103,15 @@ class AgentRemover:
         self, agent_name: str, context_manager: Optional[AgentContextManager] = None
     ) -> AgentArtifacts:
         """
-        Find all artifacts associated with an agent.
+        Find all artifacts associated with an agent using ONLY context information.
+        No more risky process scanning or pattern matching.
 
         Args:
             agent_name: Name of the agent to find artifacts for
-            context_manager: Optional context manager for precise artifact tracking
+            context_manager: Context manager for precise artifact tracking (required)
 
         Returns:
-            AgentArtifacts containing all found artifacts
+            AgentArtifacts containing all found artifacts from context
         """
         artifacts = AgentArtifacts(
             containers=[],
@@ -120,44 +121,73 @@ class AgentRemover:
             localhost_servers=[],
         )
 
-        # Try to get context information first
-        context_info = None
-        if context_manager:
-            context_info = context_manager.load_context()
-            artifacts.context_info = context_info
+        # Context is now REQUIRED for safe removal
+        if not context_manager:
+            logger.warning("No context manager provided - cannot safely identify artifacts")
+            return artifacts
 
-        # Find Docker containers
-        if self.docker_client:
-            artifacts.containers = self._find_containers(agent_name, context_info)
-            artifacts.images = self._find_images(agent_name, context_info)
+        context_info = context_manager.load_context()
+        if not context_info:
+            logger.warning("No context found - no artifacts to remove")
+            return artifacts
 
-        # Find Helmsman records
-        artifacts.helmsman_records = self._find_helmsman_records(
-            agent_name, context_info
-        )
+        artifacts.context_info = context_info
 
-        # Find build contexts
-        artifacts.build_contexts = self._find_build_contexts(agent_name, context_info)
-
-        # Find localhost development servers
-        artifacts.localhost_servers = self._find_localhost_servers(
-            agent_name, context_info
-        )
+        # Use ONLY context information for safe, precise targeting
+        artifacts.containers = self._find_containers_from_context(context_info)
+        artifacts.images = self._find_images_from_context(context_info)
+        artifacts.helmsman_records = self._find_helmsman_records_from_context(context_info)
+        artifacts.build_contexts = self._find_build_contexts_from_context(context_info)
+        artifacts.localhost_servers = self._find_localhost_servers_from_context(context_info)
 
         return artifacts
 
-    def _find_containers(
-        self, agent_name: str, context: Optional[AgentBuildContext]
+    def _find_containers_from_context(
+        self, context: AgentBuildContext
     ) -> List[Dict[str, Any]]:
-        """Find all containers associated with the agent."""
+        """Find containers using ONLY context information."""
         containers: List[Dict[str, Any]] = []
 
         if not self.docker_client:
             return containers
 
         try:
-            # If we have context, look for specific container first
-            if context and context.container_id:
+            # Check multi-instance Docker containers first
+            if context.docker_instances:
+                for docker_info in context.docker_instances:
+                    try:
+                        container = self.docker_client.containers.get(docker_info.container_id)
+                        containers.append(
+                            {
+                                "id": container.id,
+                                "name": container.name,
+                                "status": container.status,
+                                "source": "context_docker_instances",
+                                "port": docker_info.port,
+                            }
+                        )
+                    except docker.errors.NotFound:
+                        logger.warning(f"Container {docker_info.container_id} (port {docker_info.port}) from context not found")
+
+            # Check legacy single Docker instance (for backward compatibility)
+            elif context.docker_instance:
+                try:
+                    container = self.docker_client.containers.get(context.docker_instance.container_id)
+                    containers.append(
+                        {
+                            "id": container.id,
+                            "name": container.name,
+                            "status": container.status,
+                            "source": "context_docker_instance",
+                            "port": context.docker_instance.port,
+                        }
+                    )
+                except docker.errors.NotFound:
+                    logger.warning(
+                        f"Container {context.docker_instance.container_id} from context not found"
+                    )
+            # Fallback to legacy context fields
+            elif context.container_id:
                 try:
                     container = self.docker_client.containers.get(context.container_id)
                     containers.append(
@@ -165,48 +195,66 @@ class AgentRemover:
                             "id": container.id,
                             "name": container.name,
                             "status": container.status,
-                            "source": "context",
+                            "source": "context_legacy",
+                            "port": context.port,
                         }
                     )
                 except docker.errors.NotFound:
-                    logger.debug(
-                        f"Container {context.container_id} from context not found"
+                    logger.warning(
+                        f"Container {context.container_id} from legacy context not found"
                     )
 
-            # Also search by naming pattern to catch any variations
-            pattern = f"{agent_name.lower().replace('_', '-')}-agent"
-            all_containers = self.docker_client.containers.list(all=True)
-
-            for container in all_containers:
-                if pattern in container.name.lower():
-                    # Avoid duplicates if we already found it via context
-                    if not any(c["id"] == container.id for c in containers):
-                        containers.append(
-                            {
-                                "id": container.id,
-                                "name": container.name,
-                                "status": container.status,
-                                "source": "pattern_match",
-                            }
-                        )
-
         except Exception as e:
-            logger.error(f"Error finding containers for {agent_name}: {e}")
+            logger.error(f"Error finding containers from context: {e}")
 
         return containers
 
-    def _find_images(
-        self, agent_name: str, context: Optional[AgentBuildContext]
+    def _find_images_from_context(
+        self, context: AgentBuildContext
     ) -> List[Dict[str, Any]]:
-        """Find all images associated with the agent."""
+        """Find images using ONLY context information."""
         images: List[Dict[str, Any]] = []
 
         if not self.docker_client:
             return images
 
         try:
-            # If we have context, look for specific image first
-            if context and context.image_id:
+            # Check multi-instance Docker images first
+            if context.docker_instances:
+                for docker_info in context.docker_instances:
+                    try:
+                        image = self.docker_client.images.get(docker_info.image_id)
+                        images.append(
+                            {
+                                "id": image.id,
+                                "tags": image.tags,
+                                "size": getattr(image.attrs, "Size", 0),
+                                "source": "context_docker_instances",
+                                "port": docker_info.port,
+                            }
+                        )
+                    except docker.errors.ImageNotFound:
+                        logger.warning(f"Image {docker_info.image_id} (port {docker_info.port}) from context not found")
+
+            # Check legacy single Docker instance (for backward compatibility)
+            elif context.docker_instance:
+                try:
+                    image = self.docker_client.images.get(context.docker_instance.image_id)
+                    images.append(
+                        {
+                            "id": image.id,
+                            "tags": image.tags,
+                            "size": getattr(image.attrs, "Size", 0),
+                            "source": "context_docker_instance",
+                            "port": context.docker_instance.port,
+                        }
+                    )
+                except docker.errors.ImageNotFound:
+                    logger.warning(
+                        f"Image {context.docker_instance.image_id} from context not found"
+                    )
+            # Fallback to legacy context fields
+            elif context.image_id:
                 try:
                     image = self.docker_client.images.get(context.image_id)
                     images.append(
@@ -214,47 +262,29 @@ class AgentRemover:
                             "id": image.id,
                             "tags": image.tags,
                             "size": getattr(image.attrs, "Size", 0),
-                            "source": "context",
+                            "source": "context_legacy",
+                            "port": context.port,
                         }
                     )
                 except docker.errors.ImageNotFound:
-                    logger.debug(f"Image {context.image_id} from context not found")
-
-            # Also search by naming pattern
-            pattern = f"{agent_name.lower().replace('_', '-')}-agent"
-            all_images = self.docker_client.images.list()
-
-            for image in all_images:
-                for tag in image.tags:
-                    if pattern in tag.lower():
-                        # Avoid duplicates
-                        if not any(img["id"] == image.id for img in images):
-                            images.append(
-                                {
-                                    "id": image.id,
-                                    "tags": image.tags,
-                                    "size": getattr(image.attrs, "Size", 0),
-                                    "source": "pattern_match",
-                                }
-                            )
-                            break
+                    logger.warning(f"Image {context.image_id} from legacy context not found")
 
         except Exception as e:
-            logger.error(f"Error finding images for {agent_name}: {e}")
+            logger.error(f"Error finding images from context: {e}")
 
         return images
 
-    def _find_helmsman_records(
-        self, agent_name: str, context: Optional[AgentBuildContext]
+    def _find_helmsman_records_from_context(
+        self, context: AgentBuildContext
     ) -> List[Dict[str, Any]]:
-        """Find all Helmsman records associated with the agent."""
+        """Find Helmsman records using ONLY context information."""
         records = []
 
         try:
-            # If we have context, look for specific registration first
-            if context and context.helmsman_agent_id:
+            # Use only context information
+            if context.helmsman_agent_id:
                 try:
-                    # Try to get specific agent by ID
+                    # Try to get specific agent by ID from context
                     agent_info = self.helmsman_client.get_agent(
                         context.helmsman_agent_id
                     )
@@ -268,120 +298,85 @@ class AgentRemover:
                             }
                         )
                 except Exception as e:
-                    logger.debug(
+                    logger.warning(
                         f"Helmsman agent {context.helmsman_agent_id} from context not found: {e}"
                     )
 
-            # Also search by agent name to catch any variations
-            all_agents = self.helmsman_client.list_agents()
-            if all_agents:
-                for agent in all_agents.get("agents", []):
-                    if agent.get("name") == agent_name:
-                        # Avoid duplicates
-                        if not any(r["id"] == agent["id"] for r in records):
-                            records.append(
-                                {
-                                    "id": agent["id"],
-                                    "name": agent["name"],
-                                    "status": agent.get("status", "unknown"),
-                                    "source": "name_match",
-                                }
-                            )
-
         except Exception as e:
-            logger.error(f"Error finding Helmsman records for {agent_name}: {e}")
+            logger.error(f"Error finding Helmsman records from context: {e}")
 
         return records
 
-    def _find_build_contexts(
-        self, agent_name: str, context: Optional[AgentBuildContext]
+    def _find_build_contexts_from_context(
+        self, context: AgentBuildContext
     ) -> List[Path]:
-        """Find build context directories that can be cleaned up."""
+        """Find build context directories using ONLY context information."""
         contexts = []
 
         try:
-            # Check context-specific path first
-            if context and context.build_context_path:
+            # Use only context information
+            if context.build_context_path:
                 path = Path(context.build_context_path)
                 if path.exists():
                     contexts.append(path)
-
-            # Also check common temporary locations
-            temp_patterns = [
-                f"/tmp/{agent_name}-docker-context",
-                f"/tmp/{agent_name.lower().replace('_', '-')}-docker-context",
-            ]
-
-            for pattern in temp_patterns:
-                path = Path(pattern)
-                if path.exists() and path not in contexts:
-                    contexts.append(path)
+                else:
+                    logger.warning(f"Build context path from context does not exist: {path}")
 
         except Exception as e:
-            logger.error(f"Error finding build contexts for {agent_name}: {e}")
+            logger.error(f"Error finding build contexts from context: {e}")
 
         return contexts
 
-    def _find_localhost_servers(
-        self, agent_name: str, context: Optional[AgentBuildContext]
+    def _find_localhost_servers_from_context(
+        self, context: AgentBuildContext
     ) -> List[Dict[str, Any]]:
-        """Find localhost development servers running for the agent."""
+        """Find localhost servers using ONLY context information - no process scanning."""
         servers = []
 
         try:
-            # Search for uvicorn processes that match the agent
-            for proc in psutil.process_iter(["pid", "name", "cmdline", "cwd"]):
+            # Check multi-instance localhost servers first
+            if context.localhost_servers:
+                for server_info in context.localhost_servers:
+                    try:
+                        proc = psutil.Process(server_info.pid)
+                        if proc.is_running():
+                            servers.append(
+                                {
+                                    "pid": server_info.pid,
+                                    "name": "uvicorn",
+                                    "cmdline": server_info.command_line or f"uvicorn localhost_app:app --port {server_info.port}",
+                                    "cwd": server_info.working_directory,
+                                    "port": server_info.port,
+                                    "source": "context_localhost_servers",
+                                }
+                            )
+                        else:
+                            logger.info(f"Process {server_info.pid} (port {server_info.port}) from context is no longer running")
+                    except psutil.NoSuchProcess:
+                        logger.info(f"Process {server_info.pid} (port {server_info.port}) from context no longer exists")
+
+            # Check legacy single localhost server (for backward compatibility)
+            elif context.localhost_server:
                 try:
-                    proc_info = proc.info
-
-                    # Skip if not a Python process or no cmdline
-                    if not proc_info["cmdline"]:
-                        continue
-
-                    cmdline = " ".join(proc_info["cmdline"])
-
-                    # Look for uvicorn processes running localhost_app
-                    if "uvicorn" in cmdline and "localhost_app:app" in cmdline:
-                        # Check if it's related to our agent by examining the working directory
-                        cwd = proc_info.get("cwd")
-                        if cwd:
-                            cwd_path = Path(cwd)
-                            # Check if the working directory contains the agent name or is in .any_agent
-                            if agent_name.lower() in str(
-                                cwd_path
-                            ).lower() or ".any_agent" in str(cwd_path):
-                                # Extract port from command line
-                                port = None
-                                try:
-                                    cmdline_parts = proc_info["cmdline"]
-                                    if "--port" in cmdline_parts:
-                                        port_idx = cmdline_parts.index("--port")
-                                        if port_idx + 1 < len(cmdline_parts):
-                                            port = int(cmdline_parts[port_idx + 1])
-                                except (ValueError, IndexError):
-                                    pass
-
-                                servers.append(
-                                    {
-                                        "pid": proc_info["pid"],
-                                        "name": proc_info.get("name", "python"),
-                                        "cmdline": cmdline,
-                                        "cwd": cwd,
-                                        "port": port,
-                                        "source": "process_scan",
-                                    }
-                                )
-
-                except (
-                    psutil.NoSuchProcess,
-                    psutil.AccessDenied,
-                    psutil.ZombieProcess,
-                ):
-                    # Process may have disappeared or be inaccessible
-                    continue
+                    proc = psutil.Process(context.localhost_server.pid)
+                    if proc.is_running():
+                        servers.append(
+                            {
+                                "pid": context.localhost_server.pid,
+                                "name": "uvicorn",
+                                "cmdline": context.localhost_server.command_line or f"uvicorn localhost_app:app --port {context.localhost_server.port}",
+                                "cwd": context.localhost_server.working_directory,
+                                "port": context.localhost_server.port,
+                                "source": "context_localhost_server",
+                            }
+                        )
+                    else:
+                        logger.info(f"Process {context.localhost_server.pid} from context is no longer running")
+                except psutil.NoSuchProcess:
+                    logger.info(f"Process {context.localhost_server.pid} from context no longer exists")
 
         except Exception as e:
-            logger.error(f"Error finding localhost servers for {agent_name}: {e}")
+            logger.error(f"Error finding localhost servers from context: {e}")
 
         return servers
 

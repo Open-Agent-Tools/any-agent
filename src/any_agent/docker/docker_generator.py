@@ -580,6 +580,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \\
             "entrypoint_templates.py",
             "chat_endpoints_generator.py",
             "ui_routes_generator.py",
+            "url_builder.py",
+            "url_utils.py",
         ]
 
         for py_file in shared_files:

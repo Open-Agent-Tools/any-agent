@@ -10,6 +10,7 @@ from .framework_detector import FrameworkDetector
 from .env_loader import EnvironmentLoader
 from .port_checker import PortChecker
 from .dependency_installer import DependencyInstaller
+from .agent_context import AgentContextManager
 from ..localhost.fastapi_generator import LocalhostFastAPIGenerator
 from ..localhost.server import LocalhostServer
 from ..localhost.file_watcher import create_file_watcher
@@ -143,6 +144,15 @@ class LocalhostOrchestrator:
                 "agent_name": metadata.name,
             }
 
+            # Initialize context for localhost deployment
+            context_manager = AgentContextManager(agent_path_obj)
+            context_manager.update_build_info(
+                agent_name=metadata.name,
+                framework=adapter.__class__.__name__.replace("Adapter", "").lower(),
+                deployment_type="localhost",
+                model=getattr(metadata, 'model', None)
+            )
+
             # Step 5: Load Environment (reuse existing, but make optional for localhost)
             print("🌍 Loading environment variables...")
             try:
@@ -237,6 +247,22 @@ class LocalhostOrchestrator:
                 print(f"   🌐 Agent URL: http://localhost:{port}/")
                 print(f"   🏥 Health Check: {localhost_urls.health_url(port)}")
                 print(f"   📋 Agent Card: {localhost_urls.agent_card_url(port)}")
+
+                # Update context with localhost server information for safe removal
+                try:
+                    context_manager = AgentContextManager(agent_path_obj)
+                    if self.localhost_server.process:
+                        context_manager.update_localhost_server(
+                            pid=self.localhost_server.process.pid,
+                            port=port,
+                            host="localhost",
+                            app_file_path=str(app_file),
+                            working_directory=str(app_file.parent),
+                            command_line=f"uvicorn localhost_app:app --host localhost --port {port}"
+                        )
+                        print("   📝 Updated context with server information")
+                except Exception as context_error:
+                    logger.warning(f"Failed to update context with server info: {context_error}")
 
                 # Step 9: Setup File Watching for Hot Reload
                 if enable_hot_reload:
