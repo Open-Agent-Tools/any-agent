@@ -18,10 +18,8 @@ Integration Points:
 """
 
 import logging
-import os
 import platform
 import re
-from pathlib import Path
 from typing import Any, Dict, Tuple
 from urllib.parse import urlparse, urlunparse
 
@@ -70,7 +68,7 @@ class URLTranslator:
         translation_log = {}
 
         # Check ALL environment variables for localhost URLs that point to Docker services
-        for var_name, value in env_vars.items():
+        for variable_name, value in env_vars.items():
             if self._looks_like_localhost_url(value):
                 # Only translate URLs that point to Docker services
                 if self._is_docker_service(value):
@@ -78,19 +76,19 @@ class URLTranslator:
                     translated_url = self._translate_url(original_url)
 
                     if translated_url != original_url:
-                        translated_vars[var_name] = translated_url
-                        translation_log[var_name] = {
+                        translated_vars[variable_name] = translated_url
+                        translation_log[variable_name] = {
                             "original": original_url,
                             "translated": translated_url,
                             "docker_host": self._docker_host,
                             "reason": "Docker service detected",
                         }
                         logger.info(
-                            f"Translated {var_name}: {original_url} → {translated_url} (Docker service)"
+                            f"Translated {variable_name}: {original_url} → {translated_url} (Docker service)"
                         )
                 else:
                     logger.debug(
-                        f"Skipping {var_name}: {value} (not a Docker service)"
+                        f"Skipping {variable_name}: {value} (not a Docker service)"
                     )
 
         if translation_log:
@@ -179,7 +177,7 @@ class URLTranslator:
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.settimeout(1)  # 1 second timeout
-                result = sock.connect_ex(('localhost', port))
+                result = sock.connect_ex(("localhost", port))
                 sock.close()
 
                 if result != 0:
@@ -191,21 +189,25 @@ class URLTranslator:
 
             # Try to detect if it's a Docker container by checking docker ps
             try:
-                result = subprocess.run(
-                    ['docker', 'ps', '--format', '{{.Ports}}'],
+                docker_result = subprocess.run(
+                    ["docker", "ps", "--format", "{{.Ports}}"],
                     capture_output=True,
                     text=True,
-                    timeout=5
+                    timeout=5,
                 )
 
-                if result.returncode == 0:
+                if docker_result.returncode == 0:
                     # Look for port mappings that match our target port
-                    for line in result.stdout.strip().split('\n'):
-                        if f':{port}->' in line or f'0.0.0.0:{port}' in line:
+                    for line in docker_result.stdout.strip().split("\n"):
+                        if f":{port}->" in line or f"0.0.0.0:{port}" in line:
                             logger.debug(f"Found Docker container exposing port {port}")
                             return True
 
-            except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
+            except (
+                subprocess.TimeoutExpired,
+                FileNotFoundError,
+                subprocess.SubprocessError,
+            ):
                 # Docker not available or command failed
                 pass
 

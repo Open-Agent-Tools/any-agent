@@ -17,6 +17,7 @@ from .agent_context import AgentContextManager
 from .framework_detector import FrameworkDetector
 from .env_loader import EnvironmentLoader
 from .url_translator import URLTranslator
+from ..shared.url_utils import localhost_urls
 
 logger = logging.getLogger(__name__)
 
@@ -222,9 +223,9 @@ class AgentOrchestrator:
             # Log translation results if any occurred
             if translation_log:
                 logger.info("🐳 Applied URL translations for Docker deployment:")
-                for var_name, translation_info in translation_log.items():
+                for variable_name, translation_info in translation_log.items():
                     logger.info(
-                        f"  {var_name}: {translation_info['original']} → {translation_info['translated']}"
+                        f"  {variable_name}: {translation_info['original']} → {translation_info['translated']}"
                     )
 
             for key, value in translated_vars.items():
@@ -268,7 +269,7 @@ class AgentOrchestrator:
         start_time = time.time()
         while time.time() - start_time < timeout:
             try:
-                response = requests.get(f"http://localhost:{port}/health", timeout=5)
+                response = requests.get(localhost_urls.health_url(port), timeout=5)
                 if response.status_code == 200:
                     logger.info("Container is healthy!")
                     return True
@@ -324,9 +325,7 @@ class AgentOrchestrator:
 
         # Test health endpoint
         try:
-            health_response = requests.get(
-                f"http://localhost:{port}/health", timeout=10
-            )
+            health_response = requests.get(localhost_urls.health_url(port), timeout=10)
             results["health_check"] = (
                 health_response.json()
                 if health_response.status_code == 200
@@ -338,7 +337,7 @@ class AgentOrchestrator:
         # Test describe endpoint
         try:
             describe_response = requests.get(
-                f"http://localhost:{port}/describe", timeout=10
+                localhost_urls.describe_url(port), timeout=10
             )
             if describe_response.status_code == 200:
                 content_type = describe_response.headers.get("content-type", "")
@@ -363,7 +362,7 @@ class AgentOrchestrator:
         # Test agent card endpoint
         try:
             agent_card_response = requests.get(
-                f"http://localhost:{port}/.well-known/agent.json", timeout=10
+                localhost_urls.agent_json_url(port), timeout=10
             )
             if agent_card_response.status_code == 200:
                 try:
@@ -465,7 +464,7 @@ class AgentOrchestrator:
                 )
 
             # Create registration
-            root_url = f"http://localhost:{port}"
+            root_url = localhost_urls.base_url(port)
             container_name = (
                 f"{metadata.name.lower().replace('_', '-').replace(' ', '-')}-agent"
             )

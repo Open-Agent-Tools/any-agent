@@ -8,6 +8,8 @@ import time
 from pathlib import Path
 from typing import Dict, Any, Optional
 
+from ..shared.url_utils import localhost_urls
+
 logger = logging.getLogger(__name__)
 
 
@@ -320,7 +322,7 @@ export default defineConfig({{
                     "success": True,
                     "dev_port": self.dev_server_port,
                     "agent_port": agent_port,
-                    "ui_url": f"http://localhost:{self.dev_server_port}",
+                    "ui_url": localhost_urls.base_url(self.dev_server_port),
                     "message": "React dev server running with HMR enabled",
                 }
             else:

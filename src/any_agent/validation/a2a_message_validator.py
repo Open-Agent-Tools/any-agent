@@ -11,6 +11,8 @@ from dataclasses import dataclass
 
 import httpx
 
+from ..shared.url_utils import localhost_urls
+
 try:
     from a2a.client import ClientFactory, A2ACardResolver, ClientConfig
     from a2a.client.helpers import create_text_message_object
@@ -71,7 +73,7 @@ class A2AMessageValidator:
         self.validation_results = []
         start_time = time.time()
 
-        base_url = f"http://localhost:{port}"
+        base_url = localhost_urls.base_url(port)
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as httpx_client:

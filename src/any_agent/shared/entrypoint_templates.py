@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from .chat_endpoints_generator import ChatEndpointsGenerator
 from .ui_routes_generator import UIRoutesGenerator
+from .url_utils import localhost_urls
 
 logger = logging.getLogger(__name__)
 
@@ -259,7 +260,7 @@ try:
         return AgentCard(
             name=f"{context.agent_name} Agent",
             description=f"Containerized AWS Strands agent",
-            url=f"http://localhost:{context.port}/",
+            url=localhost_urls.ui_url(context.port, "/"),
             version="1.0.0",
             defaultInputModes=["text"],
             defaultOutputModes=["text"],
@@ -301,8 +302,8 @@ try:
     {ui_routes}
     
     logger.info(f"🌐 A2A server ready on port {context.port}")
-    logger.info(f"📋 Agent card: http://localhost:{context.port}/.well-known/agent-card.json")
-    logger.info(f"🏥 Health check: http://localhost:{context.port}/health")
+    logger.info(f"📋 Agent card: {localhost_urls.agent_card_url(context.port)}")
+    logger.info(f"🏥 Health check: {localhost_urls.health_url(context.port)}")
 
 except Exception as e:
     logger.error(f"❌ Failed to create A2A server: {{e}}")

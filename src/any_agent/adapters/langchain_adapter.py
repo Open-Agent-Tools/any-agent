@@ -101,13 +101,13 @@ class LangChainAdapter(BaseFrameworkAdapter):
     def _extract_description(self, content: str) -> Optional[str]:
         """Extract description from LangChain agent content."""
         # Look for description patterns
-        desc_patterns = [
+        description_patterns = [
             r'description\s*=\s*["\']([^"\']+)["\']',
             r'"""([^"]+)"""',  # Docstrings
             r"'''([^']+)'''",
         ]
 
-        for pattern in desc_patterns:
+        for pattern in description_patterns:
             match = re.search(pattern, content)
             if match:
                 desc = match.group(1).strip()

@@ -134,21 +134,21 @@ class GoogleADKAdapter(BaseFrameworkAdapter):
             return match.group(1)
 
         # Look for model= with variable reference
-        var_pattern = r"model\s*=\s*([A-Z_][A-Z0-9_]*)"
-        var_match = re.search(var_pattern, content)
-        if var_match:
-            var_name = var_match.group(1)
+        variable_pattern = r"model\s*=\s*([A-Z_][A-Z0-9_]*)"
+        variable_match = re.search(variable_pattern, content)
+        if variable_match:
+            variable_name = variable_match.group(1)
             # Look for the variable definition
-            var_def_pattern = rf'{var_name}\s*=\s*["\']([^"\']+)["\']'
-            var_def_match = re.search(var_def_pattern, content)
-            if var_def_match:
-                return var_def_match.group(1)
+            variable_definition_pattern = rf'{variable_name}\s*=\s*["\']([^"\']+)["\']'
+            variable_definition_match = re.search(variable_definition_pattern, content)
+            if variable_definition_match:
+                return variable_definition_match.group(1)
 
             # Look for environment variable default
-            env_pattern = rf'{var_name}\s*=\s*os\.getenv\(["\'][^"\']*["\'],\s*["\']([^"\']+)["\']'
-            env_match = re.search(env_pattern, content)
-            if env_match:
-                return env_match.group(1)
+            environment_pattern = rf'{variable_name}\s*=\s*os\.getenv\(["\'][^"\']*["\'],\s*["\']([^"\']+)["\']'
+            environment_match = re.search(environment_pattern, content)
+            if environment_match:
+                return environment_match.group(1)
 
         return None
 

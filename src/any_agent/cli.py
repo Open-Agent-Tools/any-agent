@@ -12,6 +12,7 @@ from .core.port_checker import PortChecker
 from .core.agent_context import AgentContextManager
 from .core.agent_remover import AgentRemover
 from .ui.manager import UIBuildManager
+from .shared.url_utils import localhost_urls
 
 
 @click.command()
@@ -694,10 +695,10 @@ def main(
             # Show appropriate endpoint based on UI setting
             if not no_ui:
                 click.echo(f"\n🎉 Agent is ready! Visit: http://localhost:{port}/")
-                click.echo(f"   Health check: curl http://localhost:{port}/health")
+                click.echo(f"   Health check: curl {localhost_urls.health_url(port)}")
             else:
                 click.echo(
-                    f"\n🎉 Agent is ready! Try: curl http://localhost:{port}/health"
+                    f"\n🎉 Agent is ready! Try: curl {localhost_urls.health_url(port)}"
                 )
 
         else:

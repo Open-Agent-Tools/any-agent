@@ -15,6 +15,7 @@ from ..localhost.server import LocalhostServer
 from ..localhost.file_watcher import create_file_watcher
 from ..localhost.ui_dev_server import UIDevServerManager
 from ..ui.manager import UIBuildManager
+from ..shared.url_utils import localhost_urls
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +120,9 @@ class LocalhostOrchestrator:
 
             # Step 3: Install Dependencies (localhost-specific)
             print("📦 Installing agent dependencies...")
-            dependency_success = self.dependency_installer.install_agent_dependencies(agent_path_obj)
+            dependency_success = self.dependency_installer.install_agent_dependencies(
+                agent_path_obj
+            )
             if not dependency_success:
                 print("   ⚠️  Warning: Some dependencies could not be installed")
                 logger.warning("Dependency installation failed, but continuing...")
@@ -127,7 +130,7 @@ class LocalhostOrchestrator:
                 print("   ✅ Dependencies installed successfully")
             results["steps"]["dependencies"] = {
                 "status": "success" if dependency_success else "warning",
-                "installed": dependency_success
+                "installed": dependency_success,
             }
 
             # Step 4: Extract Metadata (reuse existing)
@@ -232,10 +235,8 @@ class LocalhostOrchestrator:
             if self.localhost_server.is_running():
                 print("✅ Server is running!")
                 print(f"   🌐 Agent URL: http://localhost:{port}/")
-                print(f"   🏥 Health Check: http://localhost:{port}/health")
-                print(
-                    f"   📋 Agent Card: http://localhost:{port}/.well-known/agent-card.json"
-                )
+                print(f"   🏥 Health Check: {localhost_urls.health_url(port)}")
+                print(f"   📋 Agent Card: {localhost_urls.agent_card_url(port)}")
 
                 # Step 9: Setup File Watching for Hot Reload
                 if enable_hot_reload:
@@ -324,7 +325,7 @@ class LocalhostOrchestrator:
 
                 results["success"] = True
                 results["message"] = "Localhost development server started successfully"
-                results["url"] = f"http://localhost:{port}/"
+                results["url"] = localhost_urls.ui_url(port, "/")
                 if enable_hot_reload:
                     results["hot_reload"] = "enabled"
 

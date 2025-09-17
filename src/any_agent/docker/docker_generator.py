@@ -7,6 +7,7 @@ from typing import Dict, List, Optional
 from ..adapters.base import AgentMetadata
 from ..shared.entrypoint_templates import UnifiedEntrypointGenerator, EntrypointContext
 from ..shared.chat_endpoints_generator import ChatEndpointsGenerator
+from ..shared.url_utils import localhost_urls
 
 logger = logging.getLogger(__name__)
 
@@ -695,10 +696,10 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \\
             "",
             "# Check health",
             "sleep 15  # Wait for startup",
-            f"curl http://localhost:{port}/health",
+            f"curl {localhost_urls.health_url(port)}",
             "",
             "# Test endpoints",
-            f"curl http://localhost:{port}/.well-known/agent-card.json",
+            f"curl {localhost_urls.agent_card_url(port)}",
         ]
 
         return commands

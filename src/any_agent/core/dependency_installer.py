@@ -2,9 +2,8 @@
 
 import logging
 import subprocess
-import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +53,7 @@ class DependencyInstaller:
             "requirements.txt",
             "requirements-dev.txt",
             "requirements-local.txt",
-            "pyproject.toml"
+            "pyproject.toml",
         ]
 
         for pattern in patterns:
@@ -85,12 +84,7 @@ class DependencyInstaller:
             # Use uv add to install requirements
             cmd = ["uv", "add", "--requirements", str(req_file)]
 
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                check=True
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
 
             logger.info(f"Successfully installed dependencies from {req_file}")
             if result.stdout:
@@ -118,17 +112,13 @@ class DependencyInstaller:
 
             try:
                 import os
+
                 os.chdir(req_dir)
 
                 # Use uv sync to install from pyproject.toml
                 cmd = ["uv", "sync"]
 
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    check=True
-                )
+                result = subprocess.run(cmd, capture_output=True, text=True, check=True)
 
                 logger.info(f"Successfully installed dependencies from {req_file}")
                 if result.stdout:
