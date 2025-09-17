@@ -1,6 +1,6 @@
 [project]
 name = "any-agent-wrapper"
-version = "0.2.0"
+version = "0.2.1"
 description = "Universal framework for containerizing AI agents from any framework (Google ADK, AWS Strands, LangChain) into standardized Docker containers with A2A protocol support"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -56,7 +56,6 @@ dependencies = [
     "a2a-sdk>=0.1.0",
     "google-adk[a2a]>=1.13.0",
     "fastmcp>=2.12.3",
-    "basic-open-agent-tools>=0.10.4",
     "strands-agents>=1.6.0",
     "strands-agents-tools>=0.0.1",
     "anthropic>=0.64.0",
