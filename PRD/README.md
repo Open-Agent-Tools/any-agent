@@ -1,39 +1,39 @@
-# Any Agent Framework Documentation Index v0.1.7
+# Any Agent Framework Documentation v0.1.7
 
 ## 📚 Complete Documentation Suite
 
-### 🎯 **Updated for v0.1.7 Consolidated Architecture**
+### 🎯 **Organized for v0.1.7 Consolidated Architecture**
 This documentation reflects the latest architectural improvements including consolidated shared modules, unified context management, and streamlined framework adapters.
 
 ---
 
-## 📋 **Core Documentation (Updated)**
+## 📋 **Core Documentation**
 
 ### 1. Product Requirements Documents
 
-#### **[01_product_overview_v2.md](01_product_overview_v2.md)** ⭐ **NEW**
+#### **[01_product_overview.md](01_product_overview.md)** ⭐ **CURRENT**
 - **Purpose**: Complete product vision, target users, and success metrics
 - **Highlights**: Consolidated architecture benefits, framework support matrix
 - **Key Sections**: Problem statement, solution overview, competitive analysis
-- **Updated**: Framework support status, success metrics, architectural highlights
+- **Status**: Current for v0.1.7 with consolidated architecture
 
-#### **[02_technical_specification_v2.md](02_technical_specification_v2.md)** ⭐ **NEW**
+#### **[02_technical_specification.md](02_technical_specification.md)** ⭐ **CURRENT**
 - **Purpose**: Detailed technical architecture and implementation details
 - **Highlights**: New shared module layer, context isolation strategies
 - **Key Sections**: System architecture, A2A protocol integration, API interfaces
-- **Updated**: Consolidated component descriptions, architectural decisions
+- **Status**: Current with consolidated component descriptions
 
-#### **[03_implementation_status_v2.md](03_implementation_status_v2.md)** ⭐ **NEW**
+#### **[03_implementation_status.md](03_implementation_status.md)** ⭐ **CURRENT**
 - **Purpose**: Current implementation status and production readiness
 - **Highlights**: 338 tests passing, <5% code duplication, production frameworks
 - **Key Sections**: Framework implementation matrix, quality metrics, roadmap
-- **Updated**: Comprehensive status for all consolidated modules
+- **Status**: Current comprehensive status for all modules
 
-#### **[04_cli_usage_examples_v2.md](04_cli_usage_examples_v2.md)** ⭐ **NEW**
+#### **[04_cli_usage_examples.md](04_cli_usage_examples.md)** ⭐ **CURRENT**
 - **Purpose**: Complete CLI usage guide with examples
 - **Highlights**: Framework-specific workflows, advanced patterns, troubleshooting
 - **Key Sections**: Quick start, development workflow, automation examples
-- **Updated**: New consolidated features, context isolation examples
+- **Status**: Current with consolidated features and context isolation examples
 
 ---
 
@@ -47,10 +47,13 @@ This documentation reflects the latest architectural improvements including cons
 - **Key Sections**: Module boundaries, architectural principles, quality metrics
 - **Status**: Complete documentation of v0.1.7 architectural improvements
 
-#### **[02_technical_specification.md](02_technical_specification.md)** 📝 **LEGACY**
-- **Purpose**: Original technical specification (pre-consolidation)
-- **Status**: Superseded by `02_technical_specification_v2.md`
-- **Note**: Kept for historical reference
+### 🗂️ **Legacy Documentation**
+
+See **[Legacy/](Legacy/)** folder for pre-v0.1.7 documentation:
+- `Legacy/01_product_overview.md` - Original product overview
+- `Legacy/02_technical_specification.md` - Pre-consolidation technical spec
+- `Legacy/03_implementation_plan.md` - Original implementation plan
+- `Legacy/04_cli_usage_examples.md` - Pre-consolidation CLI examples
 
 ---
 
@@ -58,10 +61,6 @@ This documentation reflects the latest architectural improvements including cons
 
 ### 3. Development and Usage
 
-#### **[04_cli_usage_examples.md](04_cli_usage_examples.md)** 📝 **LEGACY**
-- **Purpose**: Original CLI examples (pre-consolidation features)
-- **Status**: Superseded by `04_cli_usage_examples_v2.md`
-- **Note**: Some examples may be outdated
 
 #### **[06_current_cli_reference.md](06_current_cli_reference.md)** 📋 **CURRENT**
 - **Purpose**: CLI command reference and options
