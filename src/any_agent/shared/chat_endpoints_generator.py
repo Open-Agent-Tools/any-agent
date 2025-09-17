@@ -1,6 +1,7 @@
 """Shared chat endpoints generator for web UI integration."""
 
 import logging
+from .url_builder import get_url_builder
 
 logger = logging.getLogger(__name__)
 
@@ -31,33 +32,38 @@ class ChatEndpointsGenerator:
 
     def _generate_fastapi_chat_endpoints(self, deployment_type: str) -> str:
         """Generate FastAPI style chat endpoints with direct body parsing."""
-        template = """
+        url_builder = get_url_builder(deployment_type)
+        default_agent_url = url_builder.default_agent_url()
+
+        template = f"""
     # Add chat endpoints for web UI integration
     try:
         import sys
         import os
         sys.path.insert(0, '/app')
-        
-        # Import the framework-specific chat handler
+
+        # Import the framework-specific chat handler and URL builder
         from any_agent.api.chat_handler import A2AChatHandler
-        
+        from any_agent.shared.url_builder import get_url_builder
+
         # Create chat handler instance
         chat_handler = A2AChatHandler(timeout=300)
-        
+        url_builder = get_url_builder("{deployment_type}")
+
         # Add chat routes (FastAPI style with Pydantic body parsing)
         async def create_chat_session_endpoint(request_body: dict):
             session_id = request_body.get('session_id')
-            agent_url = request_body.get('agent_url', f'http://localhost:{os.getenv("AGENT_PORT")}')
-            
+            agent_url = url_builder.agent_url_with_fallback(request_body.get('agent_url'))
+
             if not session_id:
-                return JSONResponse({"success": False, "error": "session_id required"}, status_code=400)
-            
+                return JSONResponse({{"success": False, "error": "session_id required"}}, status_code=400)
+
             try:
                 result = await chat_handler.create_session(session_id, agent_url)
                 return JSONResponse(result)
             except Exception as e:
-                logger.error(f"Failed to create chat session: {e}")
-                return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+                logger.error(f"Failed to create chat session: {{e}}")
+                return JSONResponse({{"success": False, "error": str(e)}}, status_code=500)
         
         async def send_chat_message_endpoint(request_body: dict):
             session_id = request_body.get('session_id')
@@ -116,40 +122,31 @@ class ChatEndpointsGenerator:
         logger.warning(f"Failed to setup chat endpoints: {chat_setup_error}. Chat will not be available.")
 """
 
-        # Replace the agent URL based on deployment type
-        if deployment_type == "localhost":
-            return template.replace(
-                "f'http://localhost:{os.getenv(\"AGENT_PORT\")}'",
-                "f'http://localhost:{os.getenv(\"AGENT_PORT\")}'",
-            )
-        else:
-            # Docker: Use 127.0.0.1 for internal container communication
-            return template.replace(
-                "f'http://localhost:{os.getenv(\"AGENT_PORT\")}'",
-                "f'http://127.0.0.1:{os.getenv(\"AGENT_PORT\")}'",
-            )
+        return template
 
     def _generate_starlette_chat_endpoints(self, deployment_type: str) -> str:
         """Generate Starlette style chat endpoints with manual request parsing."""
-        template = """
+        template = f"""
     # Add chat endpoints for web UI integration
     try:
         import sys
         import os
         sys.path.insert(0, '/app')
-        
-        # Import the framework-specific chat handler
+
+        # Import the framework-specific chat handler and URL builder
         from any_agent.api.chat_handler import A2AChatHandler
-        
+        from any_agent.shared.url_builder import get_url_builder
+
         # Create chat handler instance
         chat_handler = A2AChatHandler(timeout=300)
-        
+        url_builder = get_url_builder("{deployment_type}")
+
         # Add chat routes (Starlette style with manual request parsing)
         async def create_chat_session_endpoint(request):
             try:
                 request_body = await request.json()
                 session_id = request_body.get('session_id')
-                agent_url = request_body.get('agent_url', f'http://localhost:{os.getenv("AGENT_PORT")}')
+                agent_url = url_builder.agent_url_with_fallback(request_body.get('agent_url'))
                 
                 if not session_id:
                     return JSONResponse({"success": False, "error": "session_id required"}, status_code=400)
@@ -238,15 +235,4 @@ class ChatEndpointsGenerator:
         logger.warning(f"Failed to setup chat endpoints: {chat_setup_error}. Chat will not be available.")
 """
 
-        # Replace the agent URL based on deployment type
-        if deployment_type == "localhost":
-            return template.replace(
-                "f'http://localhost:{os.getenv(\"AGENT_PORT\")}'",
-                "f'http://localhost:{os.getenv(\"AGENT_PORT\")}'",
-            )
-        else:
-            # Docker: Use 127.0.0.1 for internal container communication
-            return template.replace(
-                "f'http://localhost:{os.getenv(\"AGENT_PORT\")}'",
-                "f'http://127.0.0.1:{os.getenv(\"AGENT_PORT\")}'",
-            )
+        return template

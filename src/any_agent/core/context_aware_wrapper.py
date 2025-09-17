@@ -9,89 +9,15 @@ import logging
 import threading
 from typing import Any, Callable, Dict, Optional
 
+from .context_manager import create_context_wrapper, BaseContextWrapper
+
 logger = logging.getLogger(__name__)
 
 
-class _BaseAgentWrapper:
-    """Base wrapper class that consolidates common wrapper patterns."""
-
-    def __init__(
-        self, agent: Any, init_message: str, call_handler: Optional[Callable] = None
-    ):
-        self.agent = agent
-        self.lock = threading.RLock()
-        self.call_handler = call_handler
-        logger.info(init_message)
-
-    def __call__(self, message: str, context_id: Optional[str] = None, **kwargs) -> Any:
-        """Process message using the configured call handler."""
-        with self.lock:
-            if self.call_handler:
-                return self.call_handler(self.agent, message, context_id, **kwargs)
-            else:
-                # Fallback for subclasses that override __call__
-                raise NotImplementedError(
-                    "Subclass must override __call__ when call_handler is None"
-                )
-
-    def __getattr__(self, name):
-        """Delegate attribute access to original agent."""
-        return getattr(self.agent, name)
+# Legacy wrapper classes removed in favor of consolidated context_manager system
 
 
-def _handle_session_managed_call(
-    agent: Any, message: str, context_id: Optional[str], **kwargs
-) -> Any:
-    """Handle calls for agents with session management."""
-    if context_id:
-        logger.debug(f"🎯 Processing with session context: {context_id}")
-        # Update the agent's session context if possible
-        if hasattr(agent.session_manager, "session_id"):
-            original_session = getattr(agent.session_manager, "session_id", None)
-            try:
-                agent.session_manager.session_id = context_id
-                result = agent(message, **kwargs)
-                return result
-            finally:
-                # Restore original session
-                if original_session:
-                    agent.session_manager.session_id = original_session
-        else:
-            # Fallback to direct call
-            return agent(message, **kwargs)
-    else:
-        return agent(message, **kwargs)
-
-
-def _handle_direct_call(
-    agent: Any, message: str, context_id: Optional[str], **kwargs
-) -> Any:
-    """Handle direct calls for agents without session management."""
-    if context_id:
-        logger.debug(
-            f"🎯 Processing with context ID {context_id} (no isolation - preserves MCP)"
-        )
-    return agent(message, **kwargs)
-
-
-def _handle_generic_call(
-    agent_factory: Callable[[], Any],
-    context_agents: Dict[str, Any],
-    message: str,
-    context_id: Optional[str],
-    **kwargs,
-) -> Any:
-    """Handle calls for generic agents with instance-per-context isolation."""
-    if not context_id:
-        context_id = "default"
-
-    if context_id not in context_agents:
-        context_agents[context_id] = agent_factory()
-        logger.info(f"🔧 Created isolated agent instance for context: {context_id}")
-
-    agent = context_agents[context_id]
-    logger.debug(f"🎯 Processing message with generic context: {context_id}")
-    return agent(message, **kwargs)
+# Legacy handler functions removed - now handled by consolidated context_manager system
 
 
 def detect_agent_type(agent: Any) -> str:
@@ -117,52 +43,24 @@ def detect_agent_type(agent: Any) -> str:
         return "unknown"
 
 
-def create_context_aware_strands_agent(original_agent: Any) -> Any:
+def create_context_aware_strands_agent(original_agent: Any) -> BaseContextWrapper:
     """Create a context-aware wrapper for Strands agents.
 
-    Uses Strands' built-in session management to isolate conversations per context_id
-    WITHOUT recreating agent instances (preserves MCP client sessions).
+    Uses consolidated context management system for consistent behavior.
 
     Args:
         original_agent: The original Strands agent instance
 
     Returns:
-        Context-aware agent wrapper that preserves stateful connections
+        Context-aware agent wrapper
     """
-    try:
-        # Check if agent already has session management
-        if (
-            hasattr(original_agent, "session_manager")
-            and original_agent.session_manager is not None
-        ):
-            logger.info(
-                "🔧 Agent already has session management - using built-in session isolation"
-            )
-            return _BaseAgentWrapper(
-                original_agent,
-                "🔧 Using Strands built-in session management for context isolation",
-                _handle_session_managed_call,
-            )
-
-        else:
-            logger.info(
-                "🔧 Agent lacks session management - using direct agent calls (preserves MCP clients)"
-            )
-            return _BaseAgentWrapper(
-                original_agent,
-                "🔧 Using direct agent calls - MCP client sessions preserved",
-                _handle_direct_call,
-            )
-
-    except ImportError:
-        logger.warning("Strands not available for context-aware wrapper")
-        return original_agent
+    return create_context_wrapper(original_agent, "strands")
 
 
-def create_context_aware_generic_agent(original_agent: Any) -> Any:
+def create_context_aware_generic_agent(original_agent: Any) -> BaseContextWrapper:
     """Create a context-aware wrapper for generic agents.
 
-    Creates separate agent instances per context_id to ensure isolation.
+    Uses consolidated context management system for consistent behavior.
 
     Args:
         original_agent: The original agent instance
@@ -170,96 +68,7 @@ def create_context_aware_generic_agent(original_agent: Any) -> Any:
     Returns:
         Context-aware agent wrapper
     """
-
-    def _create_agent_copy() -> Any:
-        """Create a copy of the base agent with comprehensive attribute preservation."""
-        try:
-            agent_class = original_agent.__class__
-            kwargs = {}
-
-            # Comprehensive attribute discovery - get all non-private, non-method attributes
-            for attr_name in dir(original_agent):
-                if (not attr_name.startswith('_') and
-                    not callable(getattr(original_agent, attr_name, None))):
-                    try:
-                        attr_value = getattr(original_agent, attr_name)
-                        # Skip complex objects that likely aren't constructor parameters
-                        if not isinstance(attr_value, (type, type(None))):
-                            kwargs[attr_name] = attr_value
-                    except Exception:
-                        continue  # Skip attributes that can't be accessed
-
-            # Ensure critical instruction attributes are preserved (various naming patterns)
-            instruction_attrs = [
-                'instruction', 'instructions', 'system_prompt', 'agent_instruction',
-                'agent_instructions', 'SYSTEM_PROMPT', 'INSTRUCTION', 'INSTRUCTIONS',
-                'prompt', 'PROMPT', 'system_message', 'agent_prompt', 'AGENT_PROMPT'
-            ]
-
-            for attr in instruction_attrs:
-                if hasattr(original_agent, attr):
-                    kwargs[attr] = getattr(original_agent, attr)
-
-            # Try to create new instance
-            return agent_class(**kwargs)
-
-        except Exception as e:
-            logger.debug(f"Failed to copy agent with all attributes: {e}")
-
-            # Fallback: try with only critical attributes
-            try:
-                agent_class = original_agent.__class__
-                critical_kwargs = {}
-
-                # Essential attributes that most agents need
-                essential_attrs = [
-                    'model', 'name', 'description', 'tools',
-                    'instruction', 'system_prompt', 'agent_instruction'
-                ]
-
-                for attr in essential_attrs:
-                    if hasattr(original_agent, attr):
-                        critical_kwargs[attr] = getattr(original_agent, attr)
-
-                return agent_class(**critical_kwargs)
-
-            except Exception as fallback_error:
-                logger.warning(
-                    f"Could not create agent copy even with fallback: {fallback_error}. "
-                    "Using shared instance (may cause context bleeding)"
-                )
-                return original_agent
-
-    # Create a specialized wrapper for generic agents that maintains context_agents state
-    class GenericAgentWrapper(_BaseAgentWrapper):
-        def __init__(self, agent: Any, init_message: str):
-            super().__init__(
-                agent, init_message, None
-            )  # No call_handler, we override __call__
-            self.context_agents: Dict[str, Any] = {}
-            self.agent_factory = _create_agent_copy
-
-        def __call__(
-            self, message: str, context_id: Optional[str] = None, **kwargs
-        ) -> Any:
-            """Process message with context isolation."""
-            with self.lock:
-                return _handle_generic_call(
-                    self.agent_factory,
-                    self.context_agents,
-                    message,
-                    context_id,
-                    **kwargs,
-                )
-
-        def __getattr__(self, name):
-            """Delegate attribute access to base agent (original agent)."""
-            return getattr(self.agent, name)
-
-    return GenericAgentWrapper(
-        original_agent,
-        f"🔧 Created generic context-aware wrapper for {type(original_agent).__name__}",
-    )
+    return create_context_wrapper(original_agent, "generic")
 
 
 def upgrade_agent_for_context_isolation(agent: Any) -> Any:
