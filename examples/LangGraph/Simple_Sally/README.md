@@ -104,4 +104,4 @@ OPENAI_API_KEY=your-key-here
 
 ## Future Migration
 
-Note: LangGraph v1.0 is coming in October 2025, which may introduce API changes. This example follows current best practices for the transition period.
+Note: LangGraph v1.0 may introduce future API changes. This example follows current best practices.

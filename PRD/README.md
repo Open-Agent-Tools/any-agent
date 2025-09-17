@@ -1,206 +1,70 @@
-# Any Agent Framework Documentation v0.1.7
+# Product Requirements Document: Any Agent Framework
 
-## 📚 Complete Documentation Suite
+## Overview
 
-### 🎯 **Organized for v0.1.7 Consolidated Architecture**
-This documentation reflects the latest architectural improvements including consolidated shared modules, unified context management, and streamlined framework adapters.
+This directory contains the complete product definition for the Any Agent Framework - a universal AI agent containerization system that wraps agents from any framework into standardized, A2A protocol-compliant Docker containers.
 
----
+## Document Structure
 
-## 📋 **Core Documentation**
+### Core Product Definition
 
-### 1. Product Requirements Documents
+#### [01_product_overview.md](01_product_overview.md)
+**Product Vision & Strategy**
+- Problem statement and solution overview
+- Key features and framework support matrix
+- Success metrics and roadmap priorities
+- Target users and competitive positioning
 
-#### **[01_product_overview.md](01_product_overview.md)** ⭐ **CURRENT**
-- **Purpose**: Complete product vision, target users, and success metrics
-- **Highlights**: Consolidated architecture benefits, framework support matrix
-- **Key Sections**: Problem statement, solution overview, competitive analysis
-- **Status**: Current for v0.1.7 with consolidated architecture
+#### [02_technical_specification.md](02_technical_specification.md)
+**System Architecture**
+- 3-layer design: Detection → Protocol → Containerization
+- Framework detection and adapter system
+- API protocols and environment configuration
+- Container architecture and deployment targets
 
-#### **[02_technical_specification.md](02_technical_specification.md)** ⭐ **CURRENT**
-- **Purpose**: Detailed technical architecture and implementation details
-- **Highlights**: New shared module layer, context isolation strategies
-- **Key Sections**: System architecture, A2A protocol integration, API interfaces
-- **Status**: Current with consolidated component descriptions
+#### [03_implementation_status.md](03_implementation_status.md)
+**Current Capabilities**
+- Release status: Production ready v0.1.7
+- Framework implementation status (Google ADK, AWS Strands production; LangChain, CrewAI detection ready)
+- Quality assurance metrics and validation
+- Next release roadmap and limitations
 
-#### **[03_implementation_status.md](03_implementation_status.md)** ⭐ **CURRENT**
-- **Purpose**: Current implementation status and production readiness
-- **Highlights**: 338 tests passing, <5% code duplication, production frameworks
-- **Key Sections**: Framework implementation matrix, quality metrics, roadmap
-- **Status**: Current comprehensive status for all modules
+### Technical Documentation
 
-#### **[04_cli_usage_examples.md](04_cli_usage_examples.md)** ⭐ **CURRENT**
-- **Purpose**: Complete CLI usage guide with examples
-- **Highlights**: Framework-specific workflows, advanced patterns, troubleshooting
-- **Key Sections**: Quick start, development workflow, automation examples
-- **Status**: Current with consolidated features and context isolation examples
+#### [04_a2a_protocol.md](04_a2a_protocol.md)
+**A2A Protocol Implementation**
+- Core A2A concepts and architecture
+- Framework-specific A2A implementations
+- Session isolation and context management
+- Best practices and production validation
 
----
+## Quick Navigation
 
-## 🏗️ **Architecture Documentation**
+**New User?** Start with [Product Overview](01_product_overview.md) → [User Guide](../docs/user_guide.md)
 
-### 2. Architectural Specifications
+**Developer?** Review [Technical Specification](02_technical_specification.md) → [Implementation Status](03_implementation_status.md)
 
-#### **[SHARED_MODULE_ARCHITECTURE.md](../docs/SHARED_MODULE_ARCHITECTURE.md)** ⭐ **NEW**
-- **Purpose**: Detailed shared module architecture and boundaries
-- **Highlights**: Module dependency graph, consolidated duplication solutions
-- **Key Sections**: Module boundaries, architectural principles, quality metrics
-- **Status**: Complete documentation of v0.1.7 architectural improvements
+**A2A Integration?** See [A2A Protocol Guide](04_a2a_protocol.md)
 
-### 🗂️ **Legacy Documentation**
+## Product Status
 
-See **[Legacy/](Legacy/)** folder for pre-v0.1.7 documentation:
-- `Legacy/01_product_overview.md` - Original product overview
-- `Legacy/02_technical_specification.md` - Pre-consolidation technical spec
-- `Legacy/03_implementation_plan.md` - Original implementation plan
-- `Legacy/04_cli_usage_examples.md` - Pre-consolidation CLI examples
+**Version**: 0.1.7 (Production Ready)
+**PyPI**: `pip install any-agent-wrapper`
+**Framework Support**: Google ADK, AWS Strands (production); LangChain, CrewAI (detection ready)
+**Test Coverage**: 338 tests passing (100% success rate)
+**Architecture**: Consolidated with <5% code duplication
 
----
+## Key Features
 
-## 🛠️ **Implementation Guides**
+- **Universal Framework Detection** - Automatically detects Google ADK, AWS Strands, LangChain, CrewAI
+- **A2A Protocol Compliance** - Full agent-to-agent communication support with session isolation
+- **Docker Containerization** - Optimized containers with health checks and standardized APIs
+- **React Web UI** - TypeScript + Material-UI interface for all containerized agents
+- **Development Mode** - Hot reload localhost development with `--localhost` flag
+- **Single CLI Command** - `python -m any_agent ./my_agent/` containerizes any agent
 
-### 3. Development and Usage
+## Documentation Maintenance
 
+This PRD represents the definitive product specification for Any Agent Framework. All documents are actively maintained and reflect current implementation status.
 
-#### **[06_current_cli_reference.md](06_current_cli_reference.md)** 📋 **CURRENT**
-- **Purpose**: CLI command reference and options
-- **Status**: Current and maintained
-- **Scope**: Command flags, environment variables, configuration options
-
-#### **[08_localhost.md](08_localhost.md)** 📋 **CURRENT**
-- **Purpose**: Localhost development mode documentation
-- **Status**: Current with consolidated URL builder integration
-- **Scope**: Development workflow, hot reload, UI dev server
-
----
-
-## 🔗 **Integration Documentation**
-
-### 4. External Integrations
-
-#### **[05_helmsman_integration.md](05_helmsman_integration.md)** 📋 **CURRENT**
-- **Purpose**: Helmsman agent registry integration
-- **Status**: Current and production-ready
-- **Scope**: Registration, discovery, agent cards, authentication
-
-#### **[generic_a2a_client_design.md](generic_a2a_client_design.md)** 📋 **CURRENT**
-- **Purpose**: A2A client implementation and usage
-- **Status**: Reflects current UnifiedA2AClientHelper implementation
-- **Scope**: Client patterns, session management, integration examples
-
----
-
-## 📊 **Status and Quality**
-
-### 5. Project Status Documentation
-
-#### **[00_status_legend.md](00_status_legend.md)** 📋 **CURRENT**
-- **Purpose**: Status indicators and completion criteria
-- **Status**: Current legend for documentation status
-- **Scope**: Symbols, completion definitions, update procedures
-
-#### **[07_achievements_beyond_prd.md](07_achievements_beyond_prd.md)** 📋 **CURRENT**
-- **Purpose**: Achievements beyond original PRD scope
-- **Status**: Current with v0.1.7 consolidation achievements
-- **Scope**: Additional features, architectural improvements, quality gains
-
-#### **[09_code_standards.md](09_code_standards.md)** 📋 **CURRENT**
-- **Purpose**: Code quality standards and conventions
-- **Status**: Current with consolidated architecture standards
-- **Scope**: Type hints, testing, documentation, architectural boundaries
-
----
-
-## 🔄 **Migration Guide**
-
-### 6. Upgrading from Previous Versions
-
-#### **From v0.1.6 to v0.1.7: Consolidated Architecture**
-
-**Breaking Changes**: None (backward compatibility maintained)
-
-**New Features**:
-- ✅ **URL Builder**: `get_url_builder()` for consistent URL construction
-- ✅ **Context Manager**: `create_context_wrapper()` for unified context isolation
-- ✅ **Unified UI Routes**: Framework-agnostic UI route generation
-- ✅ **Module Boundaries**: Architectural validation and documentation
-
-**Migration Steps**:
-```bash
-# 1. Update to latest version
-pip install --upgrade any-agent-wrapper
-
-# 2. Existing usage continues to work
-python -m any_agent ./my_agent/  # No changes needed
-
-# 3. Optional: Use new consolidated features
-# URL construction now uses consolidated builders
-# Context isolation automatically uses new system
-# UI routes use unified generation
-```
-
-**Benefits**:
-- 95% reduction in framework adapter code
-- <5% code duplication (down from 30%)
-- Improved performance and reliability
-- Better error handling and validation
-
----
-
-## 📖 **Documentation Usage Guide**
-
-### For New Users
-1. **Start with**: [01_product_overview_v2.md](01_product_overview_v2.md)
-2. **Quick Setup**: [04_cli_usage_examples_v2.md](04_cli_usage_examples_v2.md) - Section 1
-3. **Framework Specific**: [03_implementation_status_v2.md](03_implementation_status_v2.md) - Section 2
-
-### For Developers
-1. **Architecture**: [02_technical_specification_v2.md](02_technical_specification_v2.md)
-2. **Module Design**: [SHARED_MODULE_ARCHITECTURE.md](../docs/SHARED_MODULE_ARCHITECTURE.md)
-3. **Code Standards**: [09_code_standards.md](09_code_standards.md)
-
-### For DevOps/Production
-1. **Implementation Status**: [03_implementation_status_v2.md](03_implementation_status_v2.md)
-2. **CLI Reference**: [06_current_cli_reference.md](06_current_cli_reference.md)
-3. **Registry Integration**: [05_helmsman_integration.md](05_helmsman_integration.md)
-
-### For Framework Contributors
-1. **Technical Spec**: [02_technical_specification_v2.md](02_technical_specification_v2.md) - Section 1.2
-2. **Adapter Patterns**: [SHARED_MODULE_ARCHITECTURE.md](../docs/SHARED_MODULE_ARCHITECTURE.md) - Section "Architectural Principles"
-3. **Testing Guide**: [09_code_standards.md](09_code_standards.md)
-
----
-
-## 🔄 **Documentation Maintenance**
-
-### Update Schedule
-- **Major Releases**: Complete documentation review and updates
-- **Minor Releases**: Feature-specific documentation updates
-- **Patch Releases**: Bug fix documentation as needed
-
-### Version Control
-- **v2 Files**: Latest consolidated architecture (v0.1.7+)
-- **Original Files**: Legacy documentation (pre-v0.1.7)
-- **Current Files**: Continuously maintained documentation
-
-### Quality Standards
-- All new documentation includes practical examples
-- Code samples are tested and validated
-- Architecture decisions are documented with rationale
-- Module boundaries and interfaces are clearly defined
-
----
-
-## 📞 **Getting Help**
-
-### Documentation Issues
-- **GitHub Issues**: Report documentation bugs or request clarification
-- **Contributing**: PRs welcome for documentation improvements
-- **Community**: Discussions for usage questions and best practices
-
-### Technical Support
-- **CLI Help**: `python -m any_agent --help`
-- **Validation**: `python -m any_agent ./agent/ --dry-run --validate`
-- **Framework Detection**: `python -m any_agent ./agent/ --detect-only --verbose`
-
-This documentation index provides comprehensive coverage of Any Agent Framework v0.1.7 with its consolidated architecture, improved performance, and production-ready capabilities.
+**Last Updated**: Documentation consolidated and reorganized for clarity and user focus.

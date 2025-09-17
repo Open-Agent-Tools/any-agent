@@ -59,18 +59,9 @@ from .shared.url_utils import localhost_urls
     help="Output directory for generated files",
 )
 @click.option(
-    "--helmsman", is_flag=True, help="Enable Helmsman agent registry integration"
-)
-@click.option(
-    "--helmsman-url",
-    type=str,
-    default="http://localhost:7080",
-    help="Helmsman service base URL",
-)
-@click.option(
     "--agent-name",
     type=str,
-    help="Unique agent identifier for Helmsman registry and Docker naming",
+    help="Unique agent identifier for Docker naming",
 )
 @click.option("--verbose", is_flag=True, help="Enable verbose logging")
 @click.option(
@@ -80,7 +71,7 @@ from .shared.url_utils import localhost_urls
     "--remove",
     "-r",
     is_flag=True,
-    help="Remove all instances of agent from Docker and Helmsman",
+    help="Remove all instances of agent from Docker",
 )
 @click.option(
     "--yes-to-all",
@@ -135,8 +126,6 @@ def main(
     no_run: bool,
     config: Optional[Path],
     output: Optional[Path],
-    helmsman: bool,
-    helmsman_url: str,
     agent_name: Optional[str],
     verbose: bool,
     dry_run: bool,
@@ -163,8 +152,8 @@ def main(
       # Auto-detect and containerize any agent
       python -m any_agent ./my_agent
 
-      # Google ADK agent with Helmsman registration
-      python -m any_agent ./adk_agent --framework adk --helmsman --agent-name my-adk-agent
+      # Google ADK agent with custom name
+      python -m any_agent ./adk_agent --framework adk --agent-name my-adk-agent
 
       # Test mode - see what would happen
       python -m any_agent ./my_agent --dry-run
@@ -256,8 +245,6 @@ def main(
                     click.echo(f"  🐳 Docker containers: {summary['containers']}")
                 if summary["images"]:
                     click.echo(f"  📦 Docker images: {summary['images']}")
-                if summary["helmsman_records"]:
-                    click.echo(f"  ⚓ Helmsman records: {summary['helmsman_records']}")
                 if summary["build_contexts"]:
                     click.echo(f"  🗑️  Build contexts: {summary['build_contexts']}")
 
@@ -286,8 +273,6 @@ def main(
                 total_size = sum(img.get("size", 0) for img in artifacts.images)
                 size_gb = total_size / (1024**3) if total_size > 0 else 0
                 click.echo(f"  📦 Docker images: {summary['images']} ({size_gb:.2f}GB)")
-            if summary["helmsman_records"]:
-                click.echo(f"  ⚓ Helmsman records: {summary['helmsman_records']}")
             if summary["build_contexts"]:
                 click.echo(f"  🗑️  Build contexts: {summary['build_contexts']}")
 
@@ -318,10 +303,6 @@ def main(
                     )
                 if report.images_removed:
                     click.echo(f"  📦 Removed {report.images_removed} image(s)")
-                if report.helmsman_removed:
-                    click.echo(
-                        f"  ⚓ Removed {report.helmsman_removed} Helmsman registration(s)"
-                    )
                 if report.build_contexts_removed:
                     click.echo(
                         f"  🗑️  Cleaned up {report.build_contexts_removed} build context(s)"
@@ -336,8 +317,6 @@ def main(
                     click.echo(f"    Containers: {report.containers_failed} failed")
                 if report.images_failed:
                     click.echo(f"    Images: {report.images_failed} failed")
-                if report.helmsman_failed:
-                    click.echo(f"    Helmsman: {report.helmsman_failed} failed")
                 if report.build_contexts_failed:
                     click.echo(
                         f"    Build contexts: {report.build_contexts_failed} failed"
@@ -379,8 +358,6 @@ def main(
                 agent_path=str(target_path),
                 output_dir=str(output) if output else None,
                 port=port,
-                helmsman_enabled=helmsman,
-                helmsman_url=helmsman_url,
                 agent_id=agent_name,
                 environment="development",
                 add_ui=not no_ui,
@@ -433,18 +410,6 @@ def main(
             return
         click.echo(f"✅ Port {port} is available")
 
-    # Validate argument combinations
-    if helmsman and no_build:
-        click.echo("❌ Error: --helmsman requires building and running a container")
-        click.echo("   Helmsman registration needs a running agent to register")
-        click.echo("   Remove --no-build or remove --helmsman")
-        return
-
-    if helmsman and no_run:
-        click.echo("❌ Error: --helmsman requires running a container")
-        click.echo("   Helmsman registration needs a running agent to register")
-        click.echo("   Remove --no-run or remove --helmsman")
-        return
 
     if dry_run:
         click.echo("DRY RUN - Would execute the following:")
@@ -456,10 +421,6 @@ def main(
         click.echo(f"5. Start container on port {port}")
         click.echo("6. Health check")
         click.echo("7. Test agent self-description")
-        if helmsman:
-            click.echo(f"8. Register with Helmsman at {helmsman_url}")
-            if agent_name:
-                click.echo(f"   Agent Name: {agent_name}")
         return
 
     # Handle UI build if needed (and UI is enabled)
@@ -509,8 +470,6 @@ def main(
             port=port,
             build=not no_build,  # Default True, disabled by --no-build
             run=not no_run,  # Default True, disabled by --no-run
-            helmsman_enabled=helmsman,
-            helmsman_url=helmsman_url,
             agent_id=agent_name,
             environment="development",  # Could be made configurable
             add_ui=not no_ui,  # UI enabled by default, disabled with --no-ui
@@ -672,25 +631,6 @@ def main(
                         else:
                             click.echo(f"  ❌ Agent card: {agent_card['error']}")
 
-            # Show Helmsman registration results
-            if "helmsman_registration" in results["steps"]:
-                helmsman_result = results["steps"]["helmsman_registration"]
-                if helmsman_result.get("success"):
-                    click.echo("\n⚓ Helmsman Registration:")
-                    click.echo(
-                        f"  ✅ Agent registered: {helmsman_result['agent_name']}"
-                    )
-                    click.echo(f"  🌐 Helmsman URL: {helmsman_result['helmsman_url']}")
-                    click.echo(f"  📡 Root URL: {helmsman_result['root_url']}")
-                else:
-                    click.echo("\n⚓ Helmsman Registration:")
-                    click.echo(
-                        f"  ⚠️  Registration failed: {helmsman_result.get('error', 'Unknown error')}"
-                    )
-                    if verbose:
-                        click.echo(
-                            f"      Helmsman URL: {helmsman_result.get('helmsman_url', 'N/A')}"
-                        )
 
             # Show appropriate endpoint based on UI setting
             if not no_ui:

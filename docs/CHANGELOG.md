@@ -5,7 +5,20 @@ All notable changes to the Any Agent Framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - v0.1.7
+## [Unreleased] - v0.1.8
+
+### Helmsman Integration Deprecation
+
+#### 🔧 Breaking Changes
+- **Helmsman Integration Deprecated** - Moved to external workflow
+  - Removed `--helmsman`, `--helmsman-url`, and `--helmsman-token` CLI flags
+  - Deprecated Helmsman integration documentation
+  - Updated all examples to remove Helmsman references
+  - Agent registry functionality moved to external deployment pipelines
+
+---
+
+## [0.1.7] - 2024-09-16
 
 ### Enhanced URL Translation & Code Optimization
 
@@ -21,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improved localhost-to-container URL translation for cross-platform compatibility
 
 #### 🧹 Code Quality Improvements
-- **Dead Code Elimination** - Comprehensive cleanup sprint
+- **Dead Code Elimination** - Comprehensive cleanup effort
   - Removed all unused imports across the codebase (ruff F401 compliance)
   - Cleaned up TODO-marked dead code and empty functions
   - Fixed unused variable warnings (vulture 80%+ confidence)
@@ -75,7 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for Google ADK, AWS Strands, LangChain frameworks
 - A2A protocol compliance and Docker orchestration
 - React SPA UI with Material-UI components
-- Helmsman integration for agent registry
+- ~~Helmsman integration for agent registry~~ (Deprecated in v0.1.8)
 - Comprehensive validation and testing framework
 
 ---

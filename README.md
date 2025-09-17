@@ -1,218 +1,84 @@
 # Any Agent - Universal AI Agent Containerization Framework
 
-A Python framework for automatically containerizing AI agents from any framework into standardized, protocol-compliant Docker containers with consistent APIs.
-
-This is built for the homelab crew who are working across multiple frameworks and want a clean easy interface for their agents.
+A Python framework for automatically containerizing AI agents from any framework into standardized, protocol-compliant Docker containers.
 
 ## Overview
 
-This project enables developers to take any local AI agent (regardless of underlying framework) and automatically wrap it in a Docker container with consistent, standardized API endpoints. The wrapper obfuscates and decouples users from the underlying agent implementation while exposing protocol-compliant interfaces including A2A, OpenAI-compatible APIs, and custom protocols.
+Take any local AI agent and automatically wrap it in a Docker container with consistent APIs. Supports A2A protocol, OpenAI-compatible endpoints, and provides a React web UI.
 
 ![any-agent-UI.png](https://raw.githubusercontent.com/Open-Agent-Tools/any-agent/main/docs/any-agent-UI.png)
 
-## Features
-
-- **Framework Agnostic**: Automatically detects and adapts to different AI agent frameworks
-- **Multi-Protocol Support**: Implements A2A, OpenAI-compatible, and custom protocol endpoints
-- **Docker Containerization**: Generates optimized Docker containers for any agent
-- **Standardized APIs**: Consistent REST endpoints regardless of underlying framework
-- **Auto-Discovery**: Intelligent detection of agent entry points and patterns
-- **Flexible APIs**: Support for multiple API standards and custom endpoints
-- **A2A Testing Harness**: Comprehensive testing framework for A2A protocol validation and compliance
-- **Working features**: Built-in monitoring, health checks, and deployment features
-
 ## Supported Frameworks
 
-### ✅ Fully Functional
-- **Google Agent Development Kit (ADK)** - Complete implementation with full testing coverage
-  - Native A2A protocol support with Google ADK clients
-  - MCP (Model Context Protocol) integration
-  - Full end-to-end pipeline validation
-  
-- **AWS Strands** - Complete implementation with full testing coverage  
-  - Anthropic Claude Sonnet 4 integration
-  - **A2A protocol tests: PASSING (3/3)**
-  - Framework-specific A2A client implementation
-  - Complete Docker containerization pipeline
-
-### 🔄 Framework Detection Implemented  
-- **LangChain** - Adapter completed, integration testing in progress
-- **LangGraph** - Adapter completed, integration testing in progress  
-- **CrewAI** - Adapter completed, integration testing in progress
-
-### 🔮 Future Support
-- AutoGen
-- Custom Python agents  
-- Additional framework adapters based on community needs
+- **Google ADK** ✅ Fully functional
+- **AWS Strands** ✅ Fully functional
+- **LangChain** 🔄 Detection ready
+- **CrewAI** 🔄 Detection ready
 
 ## Installation
 
-### From PyPI (Recommended)
-
 ```bash
-# Install the package
 pip install any-agent-wrapper
-
-# Verify installation
-any-agent --help
-```
-
-### From Source
-
-After cloning the repository:
-
-```bash
-# Install dependencies using uv (preferred) or pip
-uv sync
-# or
-pip install -e ".[dev]"
-
-# Verify installation
-python -m any_agent --help
 ```
 
 ## Quick Start
 
 ```bash
-# Basic usage - auto-detect and containerize
+# Auto-detect and containerize any agent
 any-agent ./my_agent/
 
-# Advanced usage with specific options
-any-agent ./super_cool_agent --framework adk --port 3081
+# With specific framework (uses framework default port)
+any-agent ./my_agent/ --framework adk
 
-# Production deployment with container registry push
-any-agent ./agent/ \
-  --config prod.yaml \
-  --push registry.com/my-agent:v1.0 \
-  --agent-name my-agent-prod
+# With custom port override
+any-agent ./my_agent/ --framework aws-strands --port 8080
 
-# UI-specific commands
-any-agent ./agent/ --rebuild-ui  # Force rebuild React SPA
-python -m any_agent.ui build    # Build UI only
-
-# Alternative: Module invocation (also works)
-python -m any_agent ./my_agent/
+# Registry deployment
+any-agent ./agent/ --push registry.com/my-agent:v1.0
 ```
+
+## Key Features
+
+- **Automatic Framework Detection** - Works with Google ADK, AWS Strands, LangChain, CrewAI
+- **Standardized APIs** - A2A protocol, health checks, agent discovery
+- **Docker Containerization** - Optimized containers with consistent interfaces
+- **React Web UI** - TypeScript + Material-UI interface for all agents
+- **Multi-Protocol Support** - A2A, OpenAI-compatible endpoints
 
 ## API Endpoints
 
-All wrapped agents expose standardized endpoints:
-
-**Core Endpoints:**
-- `GET /health` - Health check and status
-- `GET /.well-known/agent-card.json` - Agent discovery and metadata
-
-**Protocol Endpoints:**
+All agents expose:
+- `GET /health` - Health check
+- `GET /.well-known/agent-card.json` - Agent metadata
 - `POST /message:send` - A2A protocol messaging
-
-## Architecture
-
-The framework follows a three-layer architecture:
-
-1. **Detection & Adaptation Layer**: Automatically detects agent frameworks and generates framework-specific adapter code
-2. **Protocol Layer**: Provides multi-protocol API support (A2A, OpenAI-compatible, WebSocket, custom protocols) 
-3. **Containerization Layer**: Builds optimized Docker containers with standardized endpoints
-
-### 8-Step Pipeline Process:
-1. **Port Availability Check** - Validates deployment port
-2. **Framework Detection** - Automatic framework identification  
-3. **Agent Validation** - Framework-specific validation
-4. **Metadata Extraction** - Agent configuration and capabilities
-5. **Docker Image Creation** - Unified containerization
-6. **Container Startup** - Deployment with environment variables
-7. **Health Check** - Container and endpoint validation
-8. **End-to-End Testing** - A2A protocol and API validation
+- `GET /` - React web interface
 
 ## Requirements
 
 - Python 3.8+
 - Docker
-- Agent frameworks as needed
+- Framework-specific dependencies as needed
 
-## Project Structure
+## Documentation
 
-```
-├── src/any_agent/
-│   ├── core/              # Framework detection and orchestration
-│   ├── adapters/          # Framework-specific adapters (ADK, Strands, LangChain, etc.)
-│   ├── api/              # FastAPI protocol implementations  
-│   ├── docker/           # Container generation and Dockerfile templates
-│   ├── ui/               # React SPA with TypeScript and Material-UI
-│   └── testing/          # A2A testing harness and validation
-├── examples/
-│   ├── adk/              # Google ADK example agents
-│   ├── strands/          # AWS Strands example agents
-│   └── a2a_clients/      # A2A protocol client examples
-├── PRD/                  # Product Requirements and Design Documents
-└── docs/                 # Additional documentation
-```
+### 📖 User Documentation
+- **[User Guide](docs/user_guide.md)** - Complete usage guide with CLI reference and examples
+- **[Changelog](docs/changelog.md)** - Release history and version notes
 
-## Environment Configuration
+### 🔧 Developer Documentation
+- **[Developer Guide](docs/developer_guide.md)** - Development setup, architecture, and contribution guide
+- **[Product Requirements](PRD/README.md)** - Complete product definition and technical specifications
 
-The framework uses environment variables with priority order:
+### 📋 Quick Navigation
+- **New User?** → [User Guide](docs/user_guide.md)
+- **Developer?** → [Developer Guide](docs/developer_guide.md)
+- **Product Overview?** → [Product Requirements](PRD/README.md)
 
-1. **CLI input** (highest priority) - Existing environment variables
-2. **Agent folder** - `.env` file in agent directory  
-3. **Current directory** - `.env` file where `any_agent` is called
+## Status
 
-### Framework-Specific Variables
+**Version**: 0.1.7 (Fully Functional)
+**PyPI**: `pip install any-agent-wrapper`
+**Test Coverage**: 381 tests passing
+**Architecture**: Consolidated with <5% code duplication
 
-**Google ADK:**
-```bash
-GOOGLE_API_KEY=your_key_here
-GOOGLE_MODEL=gemini-2.0-flash
-GOOGLE_PROJECT_ID=your_project
-```
-
-**AWS Strands:**
-```bash
-ANTHROPIC_API_KEY=your_key_here
-AWS_REGION=us-east-1
-```
-
-**Common Variables:**
-```bash
-AGENT_PORT=8080
-MCP_SERVER_URL=http://localhost:7081/mcp
-```
-
-## 🚀 Status (September 2025)
-
-### ✅ **Fully Functional Frameworks**
-- **Google ADK** - Complete implementation with enhanced Chat UI
-- **AWS Strands** - Complete implementation with A2A protocol upgrade to AWS best practices  
-- **100% Test Pass Rate** - All 101 automated tests + 25 manual integration tests passing
-- **Zero Critical Issues** - All linting errors resolved, full type safety compliance
-
-### 🎯 **A2A Protocol **
-- **Universal A2A Support** - Single unified client works across all frameworks
-- **Complete Session Isolation** - Multi-user chat sessions with zero context bleeding
-- **Standards Compliance** - Full JSON-RPC 2.0 A2A protocol implementation
-- **Agent Discovery** - Complete agent card endpoints for all containerized agents
-
-### 🏗️ **Modern Architecture**
-- **React SPA UI** - TypeScript + Material-UI + responsive design for all agents
-- **Unified Container Pipeline** - Single Docker generator supporting multiple frameworks
-- **Environment Management** - Robust priority system (CLI > agent folder > current directory)
-- **Agent Lifecycle** - Complete deployment, tracking, and removal system with audit trails
-
-
-## 🔮 Planned Improvements
-
-### Upload Support
-- **File Upload Integration** - Native support for document, image, and multimodal content uploads through standardized endpoints
-- **Framework-Agnostic Uploads** - Automatic routing of uploaded content to appropriate framework handlers (ADK vision, Strands file processing, etc.)
-- **Progress Tracking** - Real-time upload progress with resumable transfers for large files
-
-### Universal Evaluation Framework
-- **Agent Performance Validation** - Verify LLM and agent behavior meets expected performance criteria
-- **Cross-Framework Benchmarking** - Standardized evaluation metrics to compare agent performance across different frameworks
-- **Quality Assurance Testing** - Automated validation of agent responses, accuracy, and reliability
-- **Custom Evaluation Pipelines** - Framework for domain-specific evaluation criteria and success metrics
-- **Continuous Monitoring** - Real-time performance tracking and regression detection for deployed agents
-
-### Canvas Integration
-- **Visual Agent Interfaces** - Rich canvas-based interfaces for agents that work with visual content, diagrams, and interactive elements
-- **Real-Time Collaboration** - Multi-user canvas sessions with agent interaction capabilities
-- **Export & Integration** - Canvas content export to various formats with agent-generated annotations
-- **Framework Bridge** - Seamless integration between canvas interactions and underlying agent frameworks
+Full A2A protocol compliance, comprehensive testing, and deployments across multiple frameworks.
