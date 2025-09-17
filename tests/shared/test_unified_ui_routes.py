@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.any_agent.shared.unified_ui_routes import (
+from any_agent.shared.unified_ui_routes import (
     UIConfig,
     StarletteUIRouteBuilder,
     FastAPIUIRouteBuilder,

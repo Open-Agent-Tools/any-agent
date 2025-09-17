@@ -50,13 +50,6 @@ class UIRouteBuilder(ABC):
             return self.config.localhost_static_dir
         return self.config.static_dir
 
-    def _generate_error_fallback(self) -> str:
-        """Generate error fallback content for UI routes."""
-        return f"""
-        try:
-            return HTMLResponse("<h1>UI Not Available</h1><p>React SPA could not be loaded for {self.config.agent_name or "agent"}.</p>", status_code=503)
-        except Exception:
-            return HTMLResponse("<h1>Error</h1><p>Failed to serve UI.</p>", status_code=500)"""
 
 
 class StarletteUIRouteBuilder(UIRouteBuilder):
@@ -68,16 +61,13 @@ class StarletteUIRouteBuilder(UIRouteBuilder):
             return ""
 
         static_dir = self._get_static_dir()
-        error_fallback = self._generate_error_fallback()
 
         if self.config.deployment_type == "localhost":
-            return self._generate_localhost_starlette_routes(static_dir, error_fallback)
+            return self._generate_localhost_starlette_routes(static_dir)
         else:
-            return self._generate_docker_starlette_routes(static_dir, error_fallback)
+            return self._generate_docker_starlette_routes(static_dir)
 
-    def _generate_docker_starlette_routes(
-        self, static_dir: str, error_fallback: str
-    ) -> str:
+    def _generate_docker_starlette_routes(self, static_dir: str) -> str:
         """Generate Docker-specific Starlette routes."""
         return f"""
     # Add UI routes (Starlette style)
@@ -99,8 +89,10 @@ class StarletteUIRouteBuilder(UIRouteBuilder):
             index_path = "{static_dir}/index.html"
             if os.path.exists(index_path):
                 return FileResponse(index_path)
-            else:{error_fallback}
-        except Exception:{error_fallback}
+            else:
+                return HTMLResponse("<h1>UI Not Available</h1><p>React SPA could not be loaded for {self.config.agent_name or "agent"}.</p>", status_code=503)
+        except Exception:
+            return HTMLResponse("<h1>Error</h1><p>Failed to serve UI.</p>", status_code=500)
 
     ui_routes = [
         Route("/", serve_spa, methods=["GET"]),
@@ -109,9 +101,7 @@ class StarletteUIRouteBuilder(UIRouteBuilder):
     app.routes.extend(ui_routes)
 """
 
-    def _generate_localhost_starlette_routes(
-        self, static_dir: str, error_fallback: str
-    ) -> str:
+    def _generate_localhost_starlette_routes(self, static_dir: str) -> str:
         """Generate localhost-specific Starlette routes."""
         agent_name = self.config.agent_name or "agent"
 
@@ -160,7 +150,6 @@ class FastAPIUIRouteBuilder(UIRouteBuilder):
             return ""
 
         static_dir = self._get_static_dir()
-        error_fallback = self._generate_error_fallback()
 
         return f"""
     # Add UI routes (FastAPI style)
@@ -181,8 +170,10 @@ class FastAPIUIRouteBuilder(UIRouteBuilder):
             index_path = "{static_dir}/index.html"
             if os.path.exists(index_path):
                 return FileResponse(index_path)
-            else:{error_fallback}
-        except Exception:{error_fallback}
+            else:
+                return HTMLResponse("<h1>UI Not Available</h1><p>React SPA could not be loaded for {self.config.agent_name or "agent"}.</p>", status_code=503)
+        except Exception:
+            return HTMLResponse("<h1>Error</h1><p>Failed to serve UI.</p>", status_code=500)
 """
 
 
