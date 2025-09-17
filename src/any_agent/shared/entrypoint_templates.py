@@ -45,14 +45,26 @@ class UnifiedEntrypointGenerator:
     \"\"\"Load the agent dynamically.\"\"\"
     try:
         sys.path.insert(0, '/app')
+
+        # Change working directory to /app to resolve relative imports
+        original_cwd = os.getcwd()
+        os.chdir('/app')
+
         import {context.agent_path.name}
-        
+
         if not hasattr({context.agent_path.name}, 'root_agent'):
             raise ValueError("Agent package must have 'root_agent' variable exposed in __init__.py")
-            
+
+        # Restore original working directory
+        os.chdir(original_cwd)
         return {context.agent_path.name}.root_agent
     except Exception as e:
         logger.error(f"Failed to load agent: {{e}}")
+        # Restore original working directory on error
+        try:
+            os.chdir(original_cwd)
+        except:
+            pass
         raise"""
         else:
             # Use absolute path from context since __file__ isn't reliable in uvicorn
@@ -64,15 +76,26 @@ class UnifiedEntrypointGenerator:
         agent_parent_dir = "{agent_parent_dir}"
         sys.path.insert(0, agent_parent_dir)
 
+        # Change working directory to agent parent to resolve relative imports
+        original_cwd = os.getcwd()
+        os.chdir(agent_parent_dir)
+
         # Import the agent package
         import {context.agent_path.name}
 
         if not hasattr({context.agent_path.name}, 'root_agent'):
             raise ValueError("Agent package must have 'root_agent' variable exposed in __init__.py")
 
+        # Restore original working directory
+        os.chdir(original_cwd)
         return {context.agent_path.name}.root_agent
     except Exception as e:
         logger.error(f"Failed to load agent: {{e}}")
+        # Restore original working directory on error
+        try:
+            os.chdir(original_cwd)
+        except:
+            pass
         raise"""
 
     def _generate_adk_entrypoint(self, context: EntrypointContext) -> str:
@@ -120,15 +143,8 @@ try:
     root_agent = load_agent()
     logger.info(f"✅ Loaded ADK agent: {{root_agent}}")
 
-    # Upgrade agent for A2A context isolation (optional for localhost)
-    try:
-        from any_agent.core.context_aware_wrapper import upgrade_agent_for_context_isolation
-        root_agent = upgrade_agent_for_context_isolation(root_agent)
-        logger.info("✅ Agent upgraded for A2A context isolation")
-    except ImportError:
-        logger.info("Context isolation wrapper not available in localhost mode")
-    except Exception as upgrade_error:
-        logger.warning(f"Failed to upgrade agent for context isolation: {{upgrade_error}}")
+    # Skip context isolation for Google ADK (has native A2A support)
+    logger.info("🔄 Skipping context isolation for Google ADK agent (has native A2A context isolation)")
 
     # Create A2A app using Google's official utilities
     a2a_app = to_a2a(root_agent, port={context.port})

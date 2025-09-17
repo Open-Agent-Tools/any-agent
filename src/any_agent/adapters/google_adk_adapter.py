@@ -72,6 +72,7 @@ class GoogleADKAdapter(ConfigurableFrameworkAdapter):
         metadata.description = self._extract_description(all_content)
         metadata.instruction = self._extract_instruction(all_content)
         metadata.tools = self._extract_tools_from_content(all_content)
+        metadata.local_dependencies = self._extract_local_dependencies(agent_path)
 
         return metadata
 
@@ -180,11 +181,39 @@ class GoogleADKAdapter(ConfigurableFrameworkAdapter):
         """Extract agent instructions/system prompt from content."""
         import re
 
-        # Look for agent_instruction variable definition (triple quotes)
-        agent_instruction_pattern = r'agent_instruction\s*=\s*"""(.*?)"""'
-        match = re.search(agent_instruction_pattern, content, re.DOTALL)
+        # Common variable names for system prompts/instructions
+        instruction_var_names = [
+            'agent_instruction',
+            'agent_instructions',
+            'SYSTEM_PROMPT',
+            'system_prompt',
+            'PROMPT',
+            'prompt',
+            'INSTRUCTION',
+            'instruction',
+            'AGENT_PROMPT',
+            'agent_prompt',
+        ]
+
+        # First, check if Agent() uses any of these variables: instruction=VARIABLE_NAME
+        agent_var_pattern = r'Agent\([^)]*instruction\s*=\s*([A-Za-z_][A-Za-z0-9_]*)'
+        match = re.search(agent_var_pattern, content, re.DOTALL)
         if match:
-            return match.group(1).strip()
+            var_name = match.group(1)
+            # Look for that variable's definition
+            for quote_style in ['"""', '"', "'"]:
+                var_pattern = rf'{re.escape(var_name)}\s*=\s*{re.escape(quote_style)}(.*?){re.escape(quote_style)}'
+                var_match = re.search(var_pattern, content, re.DOTALL)
+                if var_match:
+                    return var_match.group(1).strip()
+
+        # Look for any common instruction variable definitions
+        for var_name in instruction_var_names:
+            for quote_style in ['"""', '"', "'"]:
+                pattern = rf'{re.escape(var_name)}\s*=\s*{re.escape(quote_style)}(.*?){re.escape(quote_style)}'
+                match = re.search(pattern, content, re.DOTALL)
+                if match:
+                    return match.group(1).strip()
 
         # Look for direct instruction assignment in Agent() constructor
         agent_direct_patterns = [
@@ -216,3 +245,41 @@ class GoogleADKAdapter(ConfigurableFrameworkAdapter):
         """Extract tools from content."""
         # Basic implementation for now
         return []
+
+    def _extract_local_dependencies(self, agent_path: Path) -> list:
+        """Extract local dependencies from Python files."""
+        module_names = []
+        file_paths = []
+
+        # Look for local imports in all Python files
+        for py_file in agent_path.rglob("*.py"):
+            if ".any_agent" in str(py_file):  # Skip generated files
+                continue
+            try:
+                content = py_file.read_text(encoding="utf-8")
+                # Look for relative imports: from .module_name import ...
+                import re
+                local_imports = re.findall(r'from\s+\.(\w+)', content)
+                module_names.extend(local_imports)
+
+                # Also look for relative imports with multiple levels: from ..parent.module import ...
+                multi_level_imports = re.findall(r'from\s+\.+(\w+(?:\.\w+)*)', content)
+                module_names.extend(multi_level_imports)
+
+            except Exception as e:
+                logger.debug(f"Error reading {py_file}: {e}")
+
+        # Convert module names to file paths
+        unique_modules = list(set(module_names))  # Remove duplicates
+        for module_name in unique_modules:
+            # Look for corresponding .py files
+            module_file = agent_path / f"{module_name}.py"
+            if module_file.exists():
+                file_paths.append(str(module_file))
+            else:
+                # Try as directory with __init__.py
+                module_dir = agent_path / module_name
+                if module_dir.exists() and module_dir.is_dir():
+                    file_paths.append(str(module_dir))
+
+        return file_paths

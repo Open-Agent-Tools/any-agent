@@ -172,25 +172,63 @@ def create_context_aware_generic_agent(original_agent: Any) -> Any:
     """
 
     def _create_agent_copy() -> Any:
-        """Create a copy of the base agent."""
-        # Try to create a new instance with same parameters
+        """Create a copy of the base agent with comprehensive attribute preservation."""
         try:
-            # For most agents, try to copy constructor parameters
             agent_class = original_agent.__class__
-
-            # Try to copy common attributes
             kwargs = {}
-            for attr in ["model", "system_prompt", "tools", "name", "description"]:
+
+            # Comprehensive attribute discovery - get all non-private, non-method attributes
+            for attr_name in dir(original_agent):
+                if (not attr_name.startswith('_') and
+                    not callable(getattr(original_agent, attr_name, None))):
+                    try:
+                        attr_value = getattr(original_agent, attr_name)
+                        # Skip complex objects that likely aren't constructor parameters
+                        if not isinstance(attr_value, (type, type(None))):
+                            kwargs[attr_name] = attr_value
+                    except Exception:
+                        continue  # Skip attributes that can't be accessed
+
+            # Ensure critical instruction attributes are preserved (various naming patterns)
+            instruction_attrs = [
+                'instruction', 'instructions', 'system_prompt', 'agent_instruction',
+                'agent_instructions', 'SYSTEM_PROMPT', 'INSTRUCTION', 'INSTRUCTIONS',
+                'prompt', 'PROMPT', 'system_message', 'agent_prompt', 'AGENT_PROMPT'
+            ]
+
+            for attr in instruction_attrs:
                 if hasattr(original_agent, attr):
                     kwargs[attr] = getattr(original_agent, attr)
 
+            # Try to create new instance
             return agent_class(**kwargs)
 
         except Exception as e:
-            logger.warning(
-                f"Could not create agent copy: {e}. Using shared instance (may cause context bleeding)"
-            )
-            return original_agent
+            logger.debug(f"Failed to copy agent with all attributes: {e}")
+
+            # Fallback: try with only critical attributes
+            try:
+                agent_class = original_agent.__class__
+                critical_kwargs = {}
+
+                # Essential attributes that most agents need
+                essential_attrs = [
+                    'model', 'name', 'description', 'tools',
+                    'instruction', 'system_prompt', 'agent_instruction'
+                ]
+
+                for attr in essential_attrs:
+                    if hasattr(original_agent, attr):
+                        critical_kwargs[attr] = getattr(original_agent, attr)
+
+                return agent_class(**critical_kwargs)
+
+            except Exception as fallback_error:
+                logger.warning(
+                    f"Could not create agent copy even with fallback: {fallback_error}. "
+                    "Using shared instance (may cause context bleeding)"
+                )
+                return original_agent
 
     # Create a specialized wrapper for generic agents that maintains context_agents state
     class GenericAgentWrapper(_BaseAgentWrapper):
