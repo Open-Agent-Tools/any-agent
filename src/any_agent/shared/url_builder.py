@@ -9,7 +9,7 @@ Centralizes all URL construction patterns to eliminate duplication across:
 
 import os
 from typing import Optional
-from .url_utils import localhost_urls, AgentURLBuilder
+from .url_utils import localhost_urls
 
 
 class ConsolidatedURLBuilder:
@@ -41,7 +41,9 @@ class ConsolidatedURLBuilder:
             port = port or int(os.getenv("AGENT_PORT", "8080"))
             return f"http://localhost:{port}"
 
-    def agent_url_with_fallback(self, provided_url: Optional[str], port: Optional[int] = None) -> str:
+    def agent_url_with_fallback(
+        self, provided_url: Optional[str], port: Optional[int] = None
+    ) -> str:
         """Get agent URL with fallback to default.
 
         Args:
@@ -66,7 +68,7 @@ class ConsolidatedURLBuilder:
         return {
             "agent_base": base,
             "health": f"{base}/health",
-            "agent_card": f"{base}/.well-known/agent-card.json"
+            "agent_card": f"{base}/.well-known/agent-card.json",
         }
 
     def get_environment_port(self, default: int = 8080) -> int:

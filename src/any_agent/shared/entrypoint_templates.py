@@ -6,7 +6,6 @@ from dataclasses import dataclass
 
 from .chat_endpoints_generator import ChatEndpointsGenerator
 from .ui_routes_generator import UIRoutesGenerator
-from .url_builder import get_url_builder
 
 logger = logging.getLogger(__name__)
 
@@ -327,10 +326,10 @@ try:
     
     {ui_routes}
     
-    logger.info(f"🌐 A2A server ready on port {context.port}")
+    logger.info(f"🌐 A2A server ready on port {{context.port}}")
     url_builder = get_url_builder(context.deployment_type)
-    logger.info(f"📋 Agent card: {url_builder.agent_card_url(context.port)}")
-    logger.info(f"🏥 Health check: {url_builder.health_url(context.port)}")
+    logger.info(f"📋 Agent card: {{url_builder.agent_card_url(context.port)}}")
+    logger.info(f"🏥 Health check: {{url_builder.health_url(context.port)}}")
 
 except Exception as e:
     logger.error(f"❌ Failed to create A2A server: {{e}}")

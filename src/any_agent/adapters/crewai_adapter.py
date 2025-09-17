@@ -8,7 +8,7 @@ from .base import (
     AgentMetadata,
     ConfigurableFrameworkAdapter,
     FrameworkConfig,
-    ValidationResult
+    ValidationResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class CrewAIAdapter(ConfigurableFrameworkAdapter):
         ],
         required_files=[],  # No required files for CrewAI
         special_validations=[],  # No special validations needed
-        entry_point="crew"
+        entry_point="crew",
     )
 
     def extract_metadata(self, agent_path: Path) -> AgentMetadata:
@@ -62,19 +62,20 @@ class CrewAIAdapter(ConfigurableFrameworkAdapter):
             errors.append("CrewAI agent detection failed")
 
         # Check for at least one Python file with CrewAI imports
-        if not self._has_framework_imports_in_directory(agent_path, self._has_configured_imports):
+        if not self._has_framework_imports_in_directory(
+            agent_path, self._has_configured_imports
+        ):
             errors.append("No CrewAI imports found in agent directory")
 
         return ValidationResult(
-            is_valid=len(errors) == 0,
-            errors=errors,
-            warnings=warnings
+            is_valid=len(errors) == 0, errors=errors, warnings=warnings
         )
 
     # Helper methods for metadata extraction
     def _extract_model(self, content: str) -> Optional[str]:
         """Extract model name from CrewAI content."""
         import re
+
         model_patterns = [
             r'llm\s*=\s*[^(]*\([^)]*model\s*=\s*["\']([^"\']+)["\']',
             r'model\s*=\s*["\']([^"\']+)["\']',

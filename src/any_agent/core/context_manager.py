@@ -7,7 +7,7 @@ unified context state management, agent instance handling, and context isolation
 import logging
 import threading
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, Optional
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ class ContextManager:
         self,
         context_id: Optional[str],
         agent_factory: Callable[[], Any],
-        default_context_id: str = "default"
+        default_context_id: str = "default",
     ) -> tuple[str, Any]:
         """Get existing context or create new one.
 
@@ -56,23 +56,29 @@ class ContextManager:
                 agent_instance = agent_factory()
 
                 import time
+
                 now = time.time()
                 self.contexts[actual_context_id] = ContextState(
                     context_id=actual_context_id,
                     agent_instance=agent_instance,
                     created_at=now,
-                    last_accessed=now
+                    last_accessed=now,
                 )
-                logger.info(f"🔧 Created isolated agent instance for context: {actual_context_id}")
+                logger.info(
+                    f"🔧 Created isolated agent instance for context: {actual_context_id}"
+                )
             else:
                 # Update access time
                 import time
+
                 self.contexts[actual_context_id].last_accessed = time.time()
 
             context_state = self.contexts[actual_context_id]
             context_state.message_count += 1
 
-            logger.debug(f"🎯 Using context: {actual_context_id} (messages: {context_state.message_count})")
+            logger.debug(
+                f"🎯 Using context: {actual_context_id} (messages: {context_state.message_count})"
+            )
             return actual_context_id, context_state.agent_instance
 
     def cleanup_context(self, context_id: str) -> bool:
@@ -103,7 +109,7 @@ class ContextManager:
                 ctx_id: {
                     "created_at": ctx.created_at,
                     "last_accessed": ctx.last_accessed,
-                    "message_count": ctx.message_count
+                    "message_count": ctx.message_count,
                 }
                 for ctx_id, ctx in self.contexts.items()
             }
@@ -145,8 +151,10 @@ class BaseContextWrapper(ABC):
             Agent response
         """
         with self.lock:
-            actual_context_id, agent_instance = self.context_manager.get_or_create_context(
-                context_id, self.create_agent_instance
+            actual_context_id, agent_instance = (
+                self.context_manager.get_or_create_context(
+                    context_id, self.create_agent_instance
+                )
             )
             return agent_instance(message, **kwargs)
 
@@ -200,8 +208,9 @@ class GenericContextWrapper(BaseContextWrapper):
 
             # Comprehensive attribute discovery
             for attr_name in dir(self.original_agent):
-                if (not attr_name.startswith('_') and
-                    not callable(getattr(self.original_agent, attr_name, None))):
+                if not attr_name.startswith("_") and not callable(
+                    getattr(self.original_agent, attr_name, None)
+                ):
                     try:
                         attr_value = getattr(self.original_agent, attr_name)
                         # Skip complex objects that likely aren't constructor parameters
@@ -212,9 +221,19 @@ class GenericContextWrapper(BaseContextWrapper):
 
             # Ensure critical instruction attributes are preserved
             instruction_attrs = [
-                'instruction', 'instructions', 'system_prompt', 'agent_instruction',
-                'agent_instructions', 'SYSTEM_PROMPT', 'INSTRUCTION', 'INSTRUCTIONS',
-                'prompt', 'PROMPT', 'system_message', 'agent_prompt', 'AGENT_PROMPT'
+                "instruction",
+                "instructions",
+                "system_prompt",
+                "agent_instruction",
+                "agent_instructions",
+                "SYSTEM_PROMPT",
+                "INSTRUCTION",
+                "INSTRUCTIONS",
+                "prompt",
+                "PROMPT",
+                "system_message",
+                "agent_prompt",
+                "AGENT_PROMPT",
             ]
 
             for attr in instruction_attrs:
@@ -232,8 +251,13 @@ class GenericContextWrapper(BaseContextWrapper):
                 critical_kwargs = {}
 
                 essential_attrs = [
-                    'model', 'name', 'description', 'tools',
-                    'instruction', 'system_prompt', 'agent_instruction'
+                    "model",
+                    "name",
+                    "description",
+                    "tools",
+                    "instruction",
+                    "system_prompt",
+                    "agent_instruction",
                 ]
 
                 for attr in essential_attrs:
@@ -262,20 +286,18 @@ def create_context_wrapper(agent: Any, agent_type: str) -> BaseContextWrapper:
     """
     if agent_type == "strands":
         # Check if agent has session management
-        if (hasattr(agent, "session_manager") and
-            agent.session_manager is not None):
+        if hasattr(agent, "session_manager") and agent.session_manager is not None:
             return SessionManagedWrapper(
                 agent,
-                "🔧 Using Strands built-in session management for context isolation"
+                "🔧 Using Strands built-in session management for context isolation",
             )
         else:
             return SessionManagedWrapper(
-                agent,
-                "🔧 Using direct agent calls - MCP client sessions preserved"
+                agent, "🔧 Using direct agent calls - MCP client sessions preserved"
             )
     else:
         # Generic approach for other frameworks
         return GenericContextWrapper(
             agent,
-            f"🔧 Created generic context-aware wrapper for {type(agent).__name__}"
+            f"🔧 Created generic context-aware wrapper for {type(agent).__name__}",
         )

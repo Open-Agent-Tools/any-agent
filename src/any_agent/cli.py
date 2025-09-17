@@ -410,7 +410,6 @@ def main(
             return
         click.echo(f"✅ Port {port} is available")
 
-
     if dry_run:
         click.echo("DRY RUN - Would execute the following:")
         click.echo(f"0. Check port {port} availability")
@@ -630,7 +629,6 @@ def main(
                             click.echo("  ✅ Agent card: AVAILABLE")
                         else:
                             click.echo(f"  ❌ Agent card: {agent_card['error']}")
-
 
             # Show appropriate endpoint based on UI setting
             if not no_ui:

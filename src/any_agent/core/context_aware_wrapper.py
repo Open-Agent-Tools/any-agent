@@ -6,8 +6,7 @@ contexts per context_id to prevent context bleeding across sessions.
 """
 
 import logging
-import threading
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 
 from .context_manager import create_context_wrapper, BaseContextWrapper
 
@@ -107,7 +106,7 @@ def upgrade_agent_for_context_isolation(agent: Any) -> Any:
         upgraded_agent = create_context_aware_generic_agent(agent)
 
     # Mark as upgraded
-    upgraded_agent._context_aware_wrapper = True
+    setattr(upgraded_agent, '_context_aware_wrapper', True)
 
     logger.info("✅ Agent upgraded for A2A context isolation")
     return upgraded_agent

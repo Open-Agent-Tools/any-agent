@@ -28,7 +28,7 @@ class UIRoutesGenerator:
         config = UIConfig(
             add_ui=add_ui,
             framework=framework,
-            deployment_type="docker"  # Default for backward compatibility
+            deployment_type="docker",  # Default for backward compatibility
         )
         return unified_ui_generator.generate_ui_routes(config)
 

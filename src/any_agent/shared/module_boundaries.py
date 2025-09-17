@@ -4,7 +4,6 @@ Defines clear separation of concerns between shared modules to eliminate
 overlapping responsibilities and establish proper dependency relationships.
 """
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, Any, Optional, Protocol
 
@@ -59,50 +58,62 @@ class ModuleBoundaryRegistry:
                 primary_responsibility="Consolidated URL construction for all deployment types",
                 interfaces=["ConsolidatedURLBuilder", "get_url_builder()"],
                 dependencies=["url_utils"],
-                consumers=["chat_endpoints_generator", "entrypoint_templates"]
+                consumers=["chat_endpoints_generator", "entrypoint_templates"],
             ),
             "url_utils": ModuleBoundary(
                 name="url_utils",
                 primary_responsibility="Low-level URL utilities and validation",
-                interfaces=["AgentURLBuilder", "localhost_urls", "validate_agent_url()"],
+                interfaces=[
+                    "AgentURLBuilder",
+                    "localhost_urls",
+                    "validate_agent_url()",
+                ],
                 dependencies=[],
-                consumers=["url_builder", "core modules"]
+                consumers=["url_builder", "core modules"],
             ),
             "unified_ui_routes": ModuleBoundary(
                 name="unified_ui_routes",
                 primary_responsibility="Standardized UI route generation across frameworks",
-                interfaces=["UnifiedUIRouteGenerator", "UIConfig", "unified_ui_generator"],
+                interfaces=[
+                    "UnifiedUIRouteGenerator",
+                    "UIConfig",
+                    "unified_ui_generator",
+                ],
                 dependencies=[],
-                consumers=["ui_routes_generator", "entrypoint_templates"]
+                consumers=["ui_routes_generator", "entrypoint_templates"],
             ),
             "ui_routes_generator": ModuleBoundary(
                 name="ui_routes_generator",
                 primary_responsibility="Legacy UI route generation interface (compatibility wrapper)",
                 interfaces=["UIRoutesGenerator"],
                 dependencies=["unified_ui_routes"],
-                consumers=["entrypoint_templates"]
+                consumers=["entrypoint_templates"],
             ),
             "chat_endpoints_generator": ModuleBoundary(
                 name="chat_endpoints_generator",
                 primary_responsibility="Chat endpoint generation for web integration",
                 interfaces=["ChatEndpointsGenerator"],
                 dependencies=["url_builder"],
-                consumers=["entrypoint_templates"]
+                consumers=["entrypoint_templates"],
             ),
             "entrypoint_templates": ModuleBoundary(
                 name="entrypoint_templates",
                 primary_responsibility="Framework-specific entrypoint template generation",
                 interfaces=["UnifiedEntrypointGenerator", "EntrypointContext"],
-                dependencies=["chat_endpoints_generator", "ui_routes_generator", "url_builder"],
-                consumers=["docker", "localhost orchestrators"]
+                dependencies=[
+                    "chat_endpoints_generator",
+                    "ui_routes_generator",
+                    "url_builder",
+                ],
+                consumers=["docker", "localhost orchestrators"],
             ),
             "strands_context_executor": ModuleBoundary(
                 name="strands_context_executor",
                 primary_responsibility="AWS Strands-specific A2A executor with context isolation",
                 interfaces=["ContextAwareStrandsA2AExecutor"],
                 dependencies=["core.context_manager"],
-                consumers=["entrypoint_templates (Strands only)"]
-            )
+                consumers=["entrypoint_templates (Strands only)"],
+            ),
         }
 
     def get_boundary(self, module_name: str) -> Optional[ModuleBoundary]:
@@ -138,7 +149,9 @@ class ModuleBoundaryRegistry:
             ready = []
             for module in remaining:
                 deps = self.get_dependencies(module)
-                if not deps or all(dep in ordered or dep not in remaining for dep in deps):
+                if not deps or all(
+                    dep in ordered or dep not in remaining for dep in deps
+                ):
                     ready.append(module)
 
             if not ready:
@@ -161,7 +174,7 @@ class ModuleBoundaryRegistry:
         violations = []
 
         # Check for overlapping responsibilities
-        responsibilities = {}
+        responsibilities: dict[str, list[str]] = {}
         for name, boundary in self._boundaries.items():
             resp = boundary.primary_responsibility.lower()
             for keyword in ["url", "ui", "route", "template", "chat", "context"]:
@@ -189,11 +202,17 @@ class ModuleBoundaryRegistry:
             return True
 
         # UI overlap is acceptable between unified_ui_routes and ui_routes_generator (wrapper pattern)
-        if keyword == "ui" and modules_set <= {"unified_ui_routes", "ui_routes_generator"}:
+        if keyword == "ui" and modules_set <= {
+            "unified_ui_routes",
+            "ui_routes_generator",
+        }:
             return True
 
         # Route overlap is acceptable between UI-related modules
-        if keyword == "route" and modules_set <= {"unified_ui_routes", "ui_routes_generator"}:
+        if keyword == "route" and modules_set <= {
+            "unified_ui_routes",
+            "ui_routes_generator",
+        }:
             return True
 
         return False

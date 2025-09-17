@@ -8,7 +8,7 @@ from .base import (
     AgentMetadata,
     ConfigurableFrameworkAdapter,
     FrameworkConfig,
-    ValidationResult
+    ValidationResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,12 +30,13 @@ class GoogleADKAdapter(ConfigurableFrameworkAdapter):
         ],
         required_files=["__init__.py"],
         special_validations=["has_root_agent_import"],
-        entry_point="root_agent"
+        entry_point="root_agent",
     )
 
     def _validate_has_root_agent_import(self, agent_path: Path) -> bool:
         """Special validation: Check if __init__.py exposes root_agent."""
         import re
+
         try:
             init_file = agent_path / "__init__.py"
             init_content = init_file.read_text(encoding="utf-8")
@@ -93,9 +94,7 @@ class GoogleADKAdapter(ConfigurableFrameworkAdapter):
             errors.append("__init__.py does not expose root_agent")
 
         return ValidationResult(
-            is_valid=len(errors) == 0,
-            errors=errors,
-            warnings=warnings
+            is_valid=len(errors) == 0, errors=errors, warnings=warnings
         )
 
     # Helper methods for metadata extraction
@@ -118,6 +117,7 @@ class GoogleADKAdapter(ConfigurableFrameworkAdapter):
     def _extract_agent_name_from_content(self, content: str) -> Optional[str]:
         """Extract agent name from Agent() constructor."""
         import re
+
         # Look for Agent(name="...") patterns
         patterns = [
             r'Agent\(\s*name\s*=\s*["\']([^"\']+)["\']',
@@ -142,7 +142,7 @@ class GoogleADKAdapter(ConfigurableFrameworkAdapter):
 
         # Look for model parameter with variable reference: Agent(model=SOME_VAR, ...)
         # Then find that variable's value
-        agent_var_pattern = r'Agent\([^)]*model\s*=\s*([A-Z_][A-Z0-9_]*)'
+        agent_var_pattern = r"Agent\([^)]*model\s*=\s*([A-Z_][A-Z0-9_]*)"
         match = re.search(agent_var_pattern, content, re.DOTALL)
         if match:
             var_name = match.group(1)
@@ -167,6 +167,7 @@ class GoogleADKAdapter(ConfigurableFrameworkAdapter):
     def _extract_description(self, content: str) -> Optional[str]:
         """Extract description from content."""
         import re
+
         desc_patterns = [
             r"description\s*=\s*['\"]([^'\"]+)['\"]",
             r"DESCRIPTION\s*=\s*['\"]([^'\"]+)['\"]",
@@ -183,26 +184,26 @@ class GoogleADKAdapter(ConfigurableFrameworkAdapter):
 
         # Common variable names for system prompts/instructions
         instruction_var_names = [
-            'agent_instruction',
-            'agent_instructions',
-            'SYSTEM_PROMPT',
-            'system_prompt',
-            'PROMPT',
-            'prompt',
-            'INSTRUCTION',
-            'instruction',
-            'AGENT_PROMPT',
-            'agent_prompt',
+            "agent_instruction",
+            "agent_instructions",
+            "SYSTEM_PROMPT",
+            "system_prompt",
+            "PROMPT",
+            "prompt",
+            "INSTRUCTION",
+            "instruction",
+            "AGENT_PROMPT",
+            "agent_prompt",
         ]
 
         # First, check if Agent() uses any of these variables: instruction=VARIABLE_NAME
-        agent_var_pattern = r'Agent\([^)]*instruction\s*=\s*([A-Za-z_][A-Za-z0-9_]*)'
+        agent_var_pattern = r"Agent\([^)]*instruction\s*=\s*([A-Za-z_][A-Za-z0-9_]*)"
         match = re.search(agent_var_pattern, content, re.DOTALL)
         if match:
             var_name = match.group(1)
             # Look for that variable's definition
             for quote_style in ['"""', '"', "'"]:
-                var_pattern = rf'{re.escape(var_name)}\s*=\s*{re.escape(quote_style)}(.*?){re.escape(quote_style)}'
+                var_pattern = rf"{re.escape(var_name)}\s*=\s*{re.escape(quote_style)}(.*?){re.escape(quote_style)}"
                 var_match = re.search(var_pattern, content, re.DOTALL)
                 if var_match:
                     return var_match.group(1).strip()
@@ -210,7 +211,7 @@ class GoogleADKAdapter(ConfigurableFrameworkAdapter):
         # Look for any common instruction variable definitions
         for var_name in instruction_var_names:
             for quote_style in ['"""', '"', "'"]:
-                pattern = rf'{re.escape(var_name)}\s*=\s*{re.escape(quote_style)}(.*?){re.escape(quote_style)}'
+                pattern = rf"{re.escape(var_name)}\s*=\s*{re.escape(quote_style)}(.*?){re.escape(quote_style)}"
                 match = re.search(pattern, content, re.DOTALL)
                 if match:
                     return match.group(1).strip()
@@ -219,7 +220,7 @@ class GoogleADKAdapter(ConfigurableFrameworkAdapter):
         agent_direct_patterns = [
             r'Agent\([^)]*instruction\s*=\s*"""([^"]*?)"""',
             r'Agent\([^)]*instruction\s*=\s*"([^"]*?)"',
-            r'Agent\([^)]*instruction\s*=\s*\'([^\']*?)\'',
+            r"Agent\([^)]*instruction\s*=\s*\'([^\']*?)\'",
         ]
 
         for pattern in agent_direct_patterns:
@@ -231,7 +232,7 @@ class GoogleADKAdapter(ConfigurableFrameworkAdapter):
         fallback_patterns = [
             r'instruction\s*=\s*"""([^"]*?)"""',
             r'instruction\s*=\s*"([^"]*?)"',
-            r'instruction\s*=\s*\'([^\']*?)\'',
+            r"instruction\s*=\s*\'([^\']*?)\'",
         ]
 
         for pattern in fallback_patterns:
@@ -259,11 +260,12 @@ class GoogleADKAdapter(ConfigurableFrameworkAdapter):
                 content = py_file.read_text(encoding="utf-8")
                 # Look for relative imports: from .module_name import ...
                 import re
-                local_imports = re.findall(r'from\s+\.(\w+)', content)
+
+                local_imports = re.findall(r"from\s+\.(\w+)", content)
                 module_names.extend(local_imports)
 
                 # Also look for relative imports with multiple levels: from ..parent.module import ...
-                multi_level_imports = re.findall(r'from\s+\.+(\w+(?:\.\w+)*)', content)
+                multi_level_imports = re.findall(r"from\s+\.+(\w+(?:\.\w+)*)", content)
                 module_names.extend(multi_level_imports)
 
             except Exception as e:

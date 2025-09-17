@@ -214,7 +214,9 @@ class ConfigurableFrameworkAdapter(BaseFrameworkAdapter):
     Subclasses only need to define framework_config and any special validation methods.
     """
 
-    framework_config: Optional[FrameworkConfig] = None  # Must be overridden by subclasses
+    framework_config: Optional[FrameworkConfig] = (
+        None  # Must be overridden by subclasses
+    )
 
     @property
     def framework_name(self) -> str:
@@ -231,7 +233,9 @@ class ConfigurableFrameworkAdapter(BaseFrameworkAdapter):
         """
         try:
             if not self.framework_config:
-                raise NotImplementedError("framework_config must be defined by subclass")
+                raise NotImplementedError(
+                    "framework_config must be defined by subclass"
+                )
 
             # Standard path validation
             if not agent_path.exists() or not agent_path.is_dir():
@@ -241,28 +245,36 @@ class ConfigurableFrameworkAdapter(BaseFrameworkAdapter):
             # Check required files
             for required_file in self.framework_config.required_files:
                 if not (agent_path / required_file).exists():
-                    logger.debug(f"Required file {required_file} not found in {agent_path}")
+                    logger.debug(
+                        f"Required file {required_file} not found in {agent_path}"
+                    )
                     return False
 
             # Check framework imports using configured patterns
             if not self._has_framework_imports_in_directory(
                 agent_path, self._has_configured_imports
             ):
-                logger.debug(f"No {self.framework_config.name} imports found in {agent_path}")
+                logger.debug(
+                    f"No {self.framework_config.name} imports found in {agent_path}"
+                )
                 return False
 
             # Run any special validations
             for validation in self.framework_config.special_validations:
                 validation_method = getattr(self, f"_validate_{validation}", None)
                 if validation_method and not validation_method(agent_path):
-                    logger.debug(f"Special validation {validation} failed for {agent_path}")
+                    logger.debug(
+                        f"Special validation {validation} failed for {agent_path}"
+                    )
                     return False
 
             logger.info(f"{self.framework_config.name} agent detected at {agent_path}")
             return True
 
         except Exception as e:
-            framework_name = self.framework_config.name if self.framework_config else "unknown"
+            framework_name = (
+                self.framework_config.name if self.framework_config else "unknown"
+            )
             logger.error(f"Error detecting {framework_name} agent at {agent_path}: {e}")
             return False
 
@@ -273,6 +285,7 @@ class ConfigurableFrameworkAdapter(BaseFrameworkAdapter):
         Eliminates ~90% of import checking code duplication.
         """
         import re
+
         if not self.framework_config:
             return False
         for pattern in self.framework_config.import_patterns:

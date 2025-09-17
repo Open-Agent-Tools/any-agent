@@ -8,7 +8,7 @@ from .base import (
     AgentMetadata,
     ConfigurableFrameworkAdapter,
     FrameworkConfig,
-    ValidationResult
+    ValidationResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ class LangChainAdapter(ConfigurableFrameworkAdapter):
         ],
         required_files=[],  # No required files for LangChain
         special_validations=[],  # No special validations needed
-        entry_point="main"
+        entry_point="main",
     )
 
     def extract_metadata(self, agent_path: Path) -> AgentMetadata:
@@ -68,19 +68,20 @@ class LangChainAdapter(ConfigurableFrameworkAdapter):
             errors.append("LangChain agent detection failed")
 
         # Check for at least one Python file with LangChain imports
-        if not self._has_framework_imports_in_directory(agent_path, self._has_configured_imports):
+        if not self._has_framework_imports_in_directory(
+            agent_path, self._has_configured_imports
+        ):
             errors.append("No LangChain imports found in agent directory")
 
         return ValidationResult(
-            is_valid=len(errors) == 0,
-            errors=errors,
-            warnings=warnings
+            is_valid=len(errors) == 0, errors=errors, warnings=warnings
         )
 
     # Helper methods for metadata extraction
     def _extract_model(self, content: str) -> Optional[str]:
         """Extract model name from LangChain content."""
         import re
+
         model_patterns = [
             r'model\s*=\s*["\']([^"\']+)["\']',
             r'model_name\s*=\s*["\']([^"\']+)["\']',
@@ -99,6 +100,7 @@ class LangChainAdapter(ConfigurableFrameworkAdapter):
     def _extract_description(self, content: str) -> Optional[str]:
         """Extract description from LangChain agent content."""
         import re
+
         description_patterns = [
             r'description\s*=\s*["\']([^"\']+)["\']',
             r'"""([^"]+)"""',  # Docstrings
@@ -117,6 +119,7 @@ class LangChainAdapter(ConfigurableFrameworkAdapter):
     def _extract_tools(self, content: str) -> list:
         """Extract tool information from LangChain content."""
         import re
+
         tools = []
 
         # Look for common LangChain tools

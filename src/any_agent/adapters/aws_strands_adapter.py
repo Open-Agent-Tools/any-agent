@@ -8,7 +8,7 @@ from .base import (
     AgentMetadata,
     ConfigurableFrameworkAdapter,
     FrameworkConfig,
-    ValidationResult
+    ValidationResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ class AWSStrandsAdapter(ConfigurableFrameworkAdapter):
         ],
         required_files=[],  # No required files for Strands
         special_validations=[],  # No special validations needed
-        entry_point="root_agent"
+        entry_point="root_agent",
     )
 
     def extract_metadata(self, agent_path: Path) -> AgentMetadata:
@@ -83,13 +83,13 @@ class AWSStrandsAdapter(ConfigurableFrameworkAdapter):
             errors.append("AWS Strands agent detection failed")
 
         # Check for at least one Python file with Strands imports
-        if not self._has_framework_imports_in_directory(agent_path, self._has_configured_imports):
+        if not self._has_framework_imports_in_directory(
+            agent_path, self._has_configured_imports
+        ):
             errors.append("No Strands imports found in agent directory")
 
         return ValidationResult(
-            is_valid=len(errors) == 0,
-            errors=errors,
-            warnings=warnings
+            is_valid=len(errors) == 0, errors=errors, warnings=warnings
         )
 
     # Helper methods for metadata extraction
@@ -110,6 +110,7 @@ class AWSStrandsAdapter(ConfigurableFrameworkAdapter):
     def _extract_model(self, content: str) -> Optional[str]:
         """Extract model name from Strands content."""
         import re
+
         model_patterns = [
             # Specific model constructors with model_id parameter
             r'BedrockModel\([^)]*model_id\s*=\s*["\']([^"\']+)["\']',
@@ -131,6 +132,7 @@ class AWSStrandsAdapter(ConfigurableFrameworkAdapter):
     def _extract_description(self, content: str, agent_name: str) -> Optional[str]:
         """Extract description from Strands content."""
         import re
+
         # Look for description patterns
         desc_patterns = [
             r'description\s*=\s*["\']([^"\']+)["\']',
@@ -148,10 +150,11 @@ class AWSStrandsAdapter(ConfigurableFrameworkAdapter):
     def _extract_tools(self, content: str) -> list:
         """Extract tools from Strands content."""
         import re
+
         tools = []
 
         # Look for @tool decorated functions
-        tool_pattern = r'@tool[^\n]*\ndef\s+(\w+)\s*\('
+        tool_pattern = r"@tool[^\n]*\ndef\s+(\w+)\s*\("
         matches = re.finditer(tool_pattern, content, re.MULTILINE)
 
         for match in matches:
@@ -162,6 +165,7 @@ class AWSStrandsAdapter(ConfigurableFrameworkAdapter):
     def _extract_environment_vars(self, content: str) -> dict:
         """Extract environment variables from content."""
         import re
+
         env_vars = {}
 
         # Look for os.getenv() calls
@@ -186,7 +190,8 @@ class AWSStrandsAdapter(ConfigurableFrameworkAdapter):
                 content = py_file.read_text(encoding="utf-8")
                 # Look for relative imports
                 import re
-                local_imports = re.findall(r'from\s+\.(\w+)', content)
+
+                local_imports = re.findall(r"from\s+\.(\w+)", content)
                 dependencies.extend(local_imports)
             except Exception as e:
                 logger.debug(f"Error reading {py_file}: {e}")

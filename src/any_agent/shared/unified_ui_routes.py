@@ -43,7 +43,10 @@ class UIRouteBuilder(ABC):
 
     def _get_static_dir(self) -> str:
         """Get appropriate static directory based on deployment type."""
-        if self.config.deployment_type == "localhost" and self.config.localhost_static_dir:
+        if (
+            self.config.deployment_type == "localhost"
+            and self.config.localhost_static_dir
+        ):
             return self.config.localhost_static_dir
         return self.config.static_dir
 
@@ -51,7 +54,7 @@ class UIRouteBuilder(ABC):
         """Generate error fallback content for UI routes."""
         return f"""
         try:
-            return HTMLResponse("<h1>UI Not Available</h1><p>React SPA could not be loaded for {self.config.agent_name or 'agent'}.</p>", status_code=503)
+            return HTMLResponse("<h1>UI Not Available</h1><p>React SPA could not be loaded for {self.config.agent_name or "agent"}.</p>", status_code=503)
         except Exception:
             return HTMLResponse("<h1>Error</h1><p>Failed to serve UI.</p>", status_code=500)"""
 
@@ -72,7 +75,9 @@ class StarletteUIRouteBuilder(UIRouteBuilder):
         else:
             return self._generate_docker_starlette_routes(static_dir, error_fallback)
 
-    def _generate_docker_starlette_routes(self, static_dir: str, error_fallback: str) -> str:
+    def _generate_docker_starlette_routes(
+        self, static_dir: str, error_fallback: str
+    ) -> str:
         """Generate Docker-specific Starlette routes."""
         return f"""
     # Add UI routes (Starlette style)
@@ -104,10 +109,11 @@ class StarletteUIRouteBuilder(UIRouteBuilder):
     app.routes.extend(ui_routes)
 """
 
-    def _generate_localhost_starlette_routes(self, static_dir: str, error_fallback: str) -> str:
+    def _generate_localhost_starlette_routes(
+        self, static_dir: str, error_fallback: str
+    ) -> str:
         """Generate localhost-specific Starlette routes."""
         agent_name = self.config.agent_name or "agent"
-        port = self.config.port or 8080
 
         return f"""
     # Add static file serving if UI enabled (localhost mode)
@@ -196,7 +202,11 @@ class UnifiedUIRouteGenerator:
             return ""
 
         # Select builder based on framework and requirements
-        if config.framework in ["adk", "strands"] or config.deployment_type == "localhost":
+        builder: UIRouteBuilder
+        if (
+            config.framework in ["adk", "strands"]
+            or config.deployment_type == "localhost"
+        ):
             # Use Starlette for A2A compatibility and localhost
             builder = StarletteUIRouteBuilder(config)
         else:
@@ -224,7 +234,7 @@ class UnifiedUIRouteGenerator:
             framework=framework,
             deployment_type="localhost",
             port=port,
-            agent_name=agent_name
+            agent_name=agent_name,
         )
         return self.generate_ui_routes(config)
 
@@ -240,11 +250,7 @@ class UnifiedUIRouteGenerator:
         Returns:
             Generated UI routes code
         """
-        config = UIConfig(
-            add_ui=add_ui,
-            framework=framework,
-            deployment_type="docker"
-        )
+        config = UIConfig(add_ui=add_ui, framework=framework, deployment_type="docker")
         return self.generate_ui_routes(config)
 
 

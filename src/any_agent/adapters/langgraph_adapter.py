@@ -8,7 +8,7 @@ from .base import (
     AgentMetadata,
     ConfigurableFrameworkAdapter,
     FrameworkConfig,
-    ValidationResult
+    ValidationResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ class LangGraphAdapter(ConfigurableFrameworkAdapter):
         ],
         required_files=[],  # No required files for LangGraph
         special_validations=[],  # No special validations needed
-        entry_point="graph"
+        entry_point="graph",
     )
 
     def extract_metadata(self, agent_path: Path) -> AgentMetadata:
@@ -63,19 +63,20 @@ class LangGraphAdapter(ConfigurableFrameworkAdapter):
             errors.append("LangGraph agent detection failed")
 
         # Check for at least one Python file with LangGraph imports
-        if not self._has_framework_imports_in_directory(agent_path, self._has_configured_imports):
+        if not self._has_framework_imports_in_directory(
+            agent_path, self._has_configured_imports
+        ):
             errors.append("No LangGraph imports found in agent directory")
 
         return ValidationResult(
-            is_valid=len(errors) == 0,
-            errors=errors,
-            warnings=warnings
+            is_valid=len(errors) == 0, errors=errors, warnings=warnings
         )
 
     # Helper methods for metadata extraction
     def _extract_model(self, content: str) -> Optional[str]:
         """Extract model name from LangGraph content."""
         import re
+
         model_patterns = [
             r'ChatOpenAI\([^)]*model\s*=\s*["\']([^"\']+)["\']',
             r'ChatAnthropic\([^)]*model\s*=\s*["\']([^"\']+)["\']',
