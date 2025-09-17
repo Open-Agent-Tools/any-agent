@@ -185,10 +185,6 @@ class AgentContextManager:
 
         return artifacts
 
-    def context_exists(self) -> bool:
-        """Check if context file exists."""
-        return self.context_file.exists()
-
     def get_agent_name(self) -> Optional[str]:
         """Get effective agent name from context (custom name if provided, otherwise detected name)."""
         context = self.load_context()

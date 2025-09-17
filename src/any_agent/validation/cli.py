@@ -21,7 +21,7 @@ def cli() -> None:
     pass
 
 
-@cli.command()
+@cli.command(name="test")
 @click.argument("endpoint", default="http://localhost:8080")
 @click.option(
     "--config", "-c", type=click.Path(exists=True), help="Configuration file path"
@@ -38,7 +38,7 @@ def cli() -> None:
 )
 @click.option("--output", "-o", type=click.Path(), help="Output file path")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
-def test(
+def test_a2a_protocol(
     endpoint: str,
     config: Optional[str],
     auth_token: Optional[str],
@@ -128,8 +128,8 @@ async def _run_tests(
             if result.failed_tests > 0:
                 sys.exit(1)
 
-    except Exception as e:
-        click.echo(f"❌ Test execution failed: {e}", err=True)
+    except Exception as execution_error:
+        click.echo(f"❌ Test execution failed: {execution_error}", err=True)
         sys.exit(1)
 
 
@@ -193,12 +193,12 @@ async def _discover_methods(
             else:
                 click.echo("\n⚠️  No methods discovered")
 
-    except Exception as e:
-        click.echo(f"❌ Discovery failed: {e}", err=True)
+    except Exception as discovery_error:
+        click.echo(f"❌ Discovery failed: {discovery_error}", err=True)
         sys.exit(1)
 
 
-@cli.command()
+@cli.command(name="call")
 @click.argument("endpoint", default="http://localhost:8080")
 @click.argument("method")
 @click.option("--params", help="JSON parameters for the method call")
@@ -211,7 +211,7 @@ async def _discover_methods(
 @click.option(
     "--validate/--no-validate", default=True, help="Validate JSON-RPC compliance"
 )
-def call(
+def call_a2a_method(
     endpoint: str,
     method: str,
     params: Optional[str],
@@ -223,13 +223,13 @@ def call(
 ) -> None:
     """Call a specific A2A method."""
     asyncio.run(
-        _call_method(
+        _call_a2a_method(
             endpoint, method, params, config, auth_token, auth_type, timeout, validate
         )
     )
 
 
-async def _call_method(
+async def _call_a2a_method(
     endpoint: str,
     method: str,
     params_str: Optional[str],
@@ -286,8 +286,8 @@ async def _call_method(
                 click.echo(f"\n❌ Error: {result.error}")
                 sys.exit(1)
 
-    except Exception as e:
-        click.echo(f"❌ Method call failed: {e}", err=True)
+    except Exception as call_error:
+        click.echo(f"❌ Method call failed: {call_error}", err=True)
         sys.exit(1)
 
 
@@ -370,7 +370,7 @@ def _load_config(
     return A2AValidationConfig(**config_data)  # type: ignore[arg-type]
 
 
-@cli.command()
+@cli.command(name="validate")
 @click.argument("port", type=int, default=8080)
 @click.option(
     "--timeout", type=int, default=30, help="Timeout for A2A operations in seconds"
@@ -384,7 +384,7 @@ def _load_config(
     help="Output format",
 )
 @click.option("--output", "-o", type=click.Path(), help="Save results to file")
-def validate(
+def validate_agent_deployment(
     port: int, timeout: int, verbose: bool, output_format: str, output: Optional[str]
 ) -> None:
     """Run comprehensive A2A protocol validation tests against a deployed agent.
@@ -442,8 +442,8 @@ async def _run_validation(
         if not results.get("success", False):
             sys.exit(1)
 
-    except Exception as e:
-        click.echo(f"❌ Validation failed: {e}", err=True)
+    except Exception as validation_error:
+        click.echo(f"❌ Validation failed: {validation_error}", err=True)
         if verbose:
             import traceback
 

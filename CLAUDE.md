@@ -7,6 +7,14 @@
 - **Never modify examples directory**
 - **Never say "production/product ready"**
 
+## Code Standards & Naming Conventions
+- **Functions**: Use descriptive verb_noun pattern (`extract_metadata`, `validate_agent`)
+- **Methods**: Avoid overly generic names (`test`, `call`, `validate` → `test_agent_functionality`, `call_agent_endpoint`, `validate_agent_structure`)
+- **Variables**: Use full words over abbreviations (`description_patterns` not `desc_patterns`)
+- **Classes**: Consistent noun patterns (singular vs plural) - prefer singular (`ValidationResult` not `ValidationResults`)
+- **Private methods**: Clear purpose in name (`_aggregate_file_contents` → `_combine_python_files`)
+- **Exception handling**: Descriptive variable names (`connection_error` not `e`)
+
 ## Project: Any Agent
 Universal AI agent containerization framework. Wraps agents from any framework (ADK, Strands, LangChain) into A2A protocol-compliant Docker containers with React SPAs.
 
