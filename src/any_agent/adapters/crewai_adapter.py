@@ -53,8 +53,8 @@ class CrewAIAdapter(ConfigurableFrameworkAdapter):
 
     def validate(self, agent_path: Path) -> ValidationResult:
         """Validate CrewAI agent."""
-        errors = []
-        warnings = []
+        errors: list[str] = []
+        warnings: list[str] = []
 
         # Check if we can detect the agent
         if not self.detect(agent_path):

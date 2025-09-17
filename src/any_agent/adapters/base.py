@@ -213,7 +213,7 @@ class ConfigurableFrameworkAdapter(BaseFrameworkAdapter):
     Subclasses only need to define framework_config and any special validation methods.
     """
 
-    framework_config: FrameworkConfig = None  # Must be overridden by subclasses
+    framework_config: Optional[FrameworkConfig] = None  # Must be overridden by subclasses
 
     @property
     def framework_name(self) -> str:
@@ -229,6 +229,9 @@ class ConfigurableFrameworkAdapter(BaseFrameworkAdapter):
         Eliminates ~95% of detection code duplication across adapters.
         """
         try:
+            if not self.framework_config:
+                raise NotImplementedError("framework_config must be defined by subclass")
+
             # Standard path validation
             if not agent_path.exists() or not agent_path.is_dir():
                 logger.debug(f"Path does not exist or is not directory: {agent_path}")
@@ -258,7 +261,8 @@ class ConfigurableFrameworkAdapter(BaseFrameworkAdapter):
             return True
 
         except Exception as e:
-            logger.error(f"Error detecting {self.framework_config.name} agent at {agent_path}: {e}")
+            framework_name = self.framework_config.name if self.framework_config else "unknown"
+            logger.error(f"Error detecting {framework_name} agent at {agent_path}: {e}")
             return False
 
     def _has_configured_imports(self, content: str) -> bool:
@@ -268,6 +272,8 @@ class ConfigurableFrameworkAdapter(BaseFrameworkAdapter):
         Eliminates ~90% of import checking code duplication.
         """
         import re
+        if not self.framework_config:
+            return False
         for pattern in self.framework_config.import_patterns:
             if re.search(pattern, content):
                 return True

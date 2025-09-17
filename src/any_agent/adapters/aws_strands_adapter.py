@@ -74,8 +74,8 @@ class AWSStrandsAdapter(ConfigurableFrameworkAdapter):
 
     def validate(self, agent_path: Path) -> ValidationResult:
         """Validate AWS Strands agent."""
-        errors = []
-        warnings = []
+        errors: list[str] = []
+        warnings: list[str] = []
 
         # Check if we can detect the agent
         if not self.detect(agent_path):
