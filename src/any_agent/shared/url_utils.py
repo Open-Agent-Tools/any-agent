@@ -5,7 +5,6 @@ eliminating duplication of URL handling patterns.
 """
 
 
-
 class AgentURLBuilder:
     """Builder for standard agent endpoint URLs."""
 

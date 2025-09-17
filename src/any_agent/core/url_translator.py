@@ -221,7 +221,9 @@ class URLTranslator:
 
         return False
 
-    def _port_exposed_in_docker_mapping(self, target_port: int, port_mapping: str) -> bool:
+    def _port_exposed_in_docker_mapping(
+        self, target_port: int, port_mapping: str
+    ) -> bool:
         """Check if a target port is exposed in a Docker port mapping string.
 
         Handles various Docker port mapping formats:
@@ -241,7 +243,10 @@ class URLTranslator:
             return False
 
         # Handle simple cases first
-        if f":{target_port}->" in port_mapping or f"0.0.0.0:{target_port}" in port_mapping:
+        if (
+            f":{target_port}->" in port_mapping
+            or f"0.0.0.0:{target_port}" in port_mapping
+        ):
             return True
 
         # Handle port ranges like "127.0.0.1:7080-7081->7080-7081/tcp"
