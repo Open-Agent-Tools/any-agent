@@ -288,7 +288,7 @@ class TestCLIOrchestratorPaths:
     @patch("any_agent.core.docker_orchestrator.AgentOrchestrator")
     @patch("any_agent.core.agent_context.AgentContextManager")
 
-    def test_cli_comprehensive_flag_combinations(self):
+    def test_cli_comprehensive_flag_combinations(self, mock_context, mock_orchestrator):
         """Test CLI with comprehensive flag combinations."""
         runner = CliRunner()
 

@@ -55,15 +55,11 @@ class TestChatEndpointsGeneration:
         assert "cleanup_chat_session_endpoint" in endpoints_code
         assert "cancel_chat_task_endpoint" in endpoints_code
 
-        # Should register all four routes
-        assert "chat_create_route = Route" in endpoints_code
-        assert "chat_send_route = Route" in endpoints_code
-        assert "chat_cleanup_route = Route" in endpoints_code
-        assert "chat_cancel_route = Route" in endpoints_code
-        assert (
-            "app.routes.extend([chat_create_route, chat_send_route, chat_cleanup_route, chat_cancel_route])"
-            in endpoints_code
-        )
+        # Should register all four routes using app.mount
+        assert 'app.mount("/chat/create-session", Route("/", create_chat_session_endpoint' in endpoints_code
+        assert 'app.mount("/chat/send-message", Route("/", send_chat_message_endpoint' in endpoints_code
+        assert 'app.mount("/chat/cleanup-session", Route("/", cleanup_chat_session_endpoint' in endpoints_code
+        assert 'app.mount("/chat/cancel-task", Route("/", cancel_chat_task_endpoint' in endpoints_code
 
     def test_cleanup_endpoint_validates_session_id(self, generator):
         """Test that cleanup endpoint validates session_id parameter."""
@@ -87,7 +83,7 @@ class TestChatEndpointsGeneration:
 
         # Should have try/except around cleanup call
         assert "try:" in endpoints_code
-        assert "except Exception as e:" in endpoints_code
+        assert "except Exception as error:" in endpoints_code
         assert "Failed to cleanup session" in endpoints_code
 
     def test_adk_entrypoint_includes_chat_endpoints(self, generator, mock_metadata):
@@ -101,7 +97,7 @@ class TestChatEndpointsGeneration:
 
         # Should include actual chat endpoints implementation
         assert "cleanup_chat_session_endpoint" in entrypoint_code
-        assert "chat_cleanup_route = Route" in entrypoint_code
+        assert 'app.mount("/chat/cleanup-session"' in entrypoint_code
 
     def test_strands_entrypoint_includes_chat_endpoints(self, generator, mock_metadata):
         """Test that Strands entrypoint generation includes chat endpoints."""
@@ -121,7 +117,7 @@ class TestChatEndpointsGeneration:
 
         # Should include actual chat endpoints implementation
         assert "cleanup_chat_session_endpoint" in entrypoint_code
-        assert "chat_cleanup_route = Route" in entrypoint_code
+        assert 'app.mount("/chat/cleanup-session"' in entrypoint_code
 
     def test_chat_handler_import_in_endpoints(self, generator):
         """Test that chat endpoints properly import A2AChatHandler."""
@@ -239,11 +235,8 @@ class TestChatEndpointsGeneration:
         """Test that agent_url defaults to current container."""
         endpoints_code = generator._generate_chat_endpoints("generic")
 
-        # Should default agent_url to localhost with environment port
-        assert (
-            "agent_url = request_body.get('agent_url', f'http://localhost:{os.getenv(\"AGENT_PORT\")}'"
-            in endpoints_code
-        )
+        # Should use url_builder for agent_url handling
+        assert "url_builder.agent_url_with_fallback(request_body.get('agent_url'))" in endpoints_code
 
 
 class TestChatEndpointIntegration:
@@ -274,8 +267,8 @@ class TestChatEndpointIntegration:
         )
         assert "from starlette.responses import JSONResponse" in entrypoint_code
 
-        # Should include all chat routes
-        assert "chat_cleanup_route = Route" in entrypoint_code
+        # Should include all chat routes using app.mount
+        assert 'app.mount("/chat/cleanup-session"' in entrypoint_code
 
     def test_dockerfile_generation_preserves_cleanup(self, generator):
         """Test that complete Dockerfile generation preserves cleanup endpoints."""
