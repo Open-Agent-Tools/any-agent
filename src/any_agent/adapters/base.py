@@ -18,6 +18,7 @@ class AgentMetadata:
     framework: str
     model: Optional[str] = None
     description: Optional[str] = None
+    instruction: Optional[str] = None  # System prompt/agent instructions
     tools: List[str] = field(default_factory=list)
     environment_vars: Dict[str, str] = field(default_factory=dict)
     entry_point: str = "root_agent"

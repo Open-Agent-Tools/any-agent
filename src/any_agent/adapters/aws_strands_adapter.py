@@ -66,6 +66,7 @@ class AWSStrandsAdapter(ConfigurableFrameworkAdapter):
 
         metadata.model = self._extract_model(primary_content)
         metadata.description = self._extract_description(primary_content, agent_name)
+        metadata.instruction = None  # TODO: Extract Strands agent instructions
         metadata.tools = self._extract_tools(primary_content)
         metadata.environment_vars = self._extract_environment_vars(primary_content)
         metadata.local_dependencies = self._extract_local_dependencies(agent_path)

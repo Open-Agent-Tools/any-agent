@@ -47,6 +47,7 @@ class CrewAIAdapter(ConfigurableFrameworkAdapter):
 
         metadata.model = self._extract_model(all_content)
         metadata.description = self._extract_description(all_content)
+        metadata.instruction = None  # TODO: Extract CrewAI agent instructions
         metadata.tools = self._extract_tools(all_content)
 
         return metadata

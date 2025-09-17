@@ -70,6 +70,7 @@ class GoogleADKAdapter(ConfigurableFrameworkAdapter):
         # Extract metadata from combined content
         metadata.model = self._extract_model_best_source(all_content)
         metadata.description = self._extract_description(all_content)
+        metadata.instruction = self._extract_instruction(all_content)
         metadata.tools = self._extract_tools_from_content(all_content)
 
         return metadata
@@ -130,14 +131,36 @@ class GoogleADKAdapter(ConfigurableFrameworkAdapter):
     def _extract_model_best_source(self, content: str) -> Optional[str]:
         """Extract model from content."""
         import re
-        model_patterns = [
-            r"model\s*=\s*['\"]([^'\"]+)['\"]",
-            r"GOOGLE_MODEL.*['\"]([^'\"]+)['\"]",
-        ]
-        for pattern in model_patterns:
-            match = re.search(pattern, content)
-            if match:
-                return match.group(1)
+
+        # Look for model parameter in Agent() constructor
+        # This handles: Agent(model="gemini-1.5-flash", ...)
+        agent_model_pattern = r'Agent\([^)]*model\s*=\s*["\']([^"\']+)["\']'
+        match = re.search(agent_model_pattern, content, re.DOTALL)
+        if match:
+            return match.group(1)
+
+        # Look for model parameter with variable reference: Agent(model=SOME_VAR, ...)
+        # Then find that variable's value
+        agent_var_pattern = r'Agent\([^)]*model\s*=\s*([A-Z_][A-Z0-9_]*)'
+        match = re.search(agent_var_pattern, content, re.DOTALL)
+        if match:
+            var_name = match.group(1)
+            # Look for the variable definition with getenv default
+            var_patterns = [
+                rf'{var_name}\s*=\s*os\.getenv\([^,]+,\s*["\']([^"\']+)["\']',
+                rf'{var_name}\s*=\s*["\']([^"\']+)["\']',
+            ]
+            for pattern in var_patterns:
+                var_match = re.search(pattern, content)
+                if var_match:
+                    return var_match.group(1)
+
+        # Fallback: direct model assignment anywhere
+        direct_pattern = r'model\s*=\s*["\']([^"\']+)["\']'
+        match = re.search(direct_pattern, content)
+        if match:
+            return match.group(1)
+
         return None
 
     def _extract_description(self, content: str) -> Optional[str]:
@@ -151,6 +174,42 @@ class GoogleADKAdapter(ConfigurableFrameworkAdapter):
             match = re.search(pattern, content)
             if match:
                 return match.group(1)
+        return None
+
+    def _extract_instruction(self, content: str) -> Optional[str]:
+        """Extract agent instructions/system prompt from content."""
+        import re
+
+        # Look for agent_instruction variable definition (triple quotes)
+        agent_instruction_pattern = r'agent_instruction\s*=\s*"""(.*?)"""'
+        match = re.search(agent_instruction_pattern, content, re.DOTALL)
+        if match:
+            return match.group(1).strip()
+
+        # Look for direct instruction assignment in Agent() constructor
+        agent_direct_patterns = [
+            r'Agent\([^)]*instruction\s*=\s*"""([^"]*?)"""',
+            r'Agent\([^)]*instruction\s*=\s*"([^"]*?)"',
+            r'Agent\([^)]*instruction\s*=\s*\'([^\']*?)\'',
+        ]
+
+        for pattern in agent_direct_patterns:
+            match = re.search(pattern, content, re.DOTALL)
+            if match:
+                return match.group(1).strip()
+
+        # Fallback: any instruction assignment
+        fallback_patterns = [
+            r'instruction\s*=\s*"""([^"]*?)"""',
+            r'instruction\s*=\s*"([^"]*?)"',
+            r'instruction\s*=\s*\'([^\']*?)\'',
+        ]
+
+        for pattern in fallback_patterns:
+            match = re.search(pattern, content, re.DOTALL)
+            if match:
+                return match.group(1).strip()
+
         return None
 
     def _extract_tools_from_content(self, content: str) -> list:
