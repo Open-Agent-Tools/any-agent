@@ -199,7 +199,7 @@ class URLTranslator:
                 if docker_result.returncode == 0:
                     # Look for port mappings that match our target port
                     for line in docker_result.stdout.strip().split("\n"):
-                        if f":{port}->" in line or f"0.0.0.0:{port}" in line:
+                        if self._port_exposed_in_docker_mapping(port, line):
                             logger.debug(f"Found Docker container exposing port {port}")
                             return True
 
@@ -218,6 +218,58 @@ class URLTranslator:
 
         except Exception as e:
             logger.debug(f"Error checking if {url} is Docker service: {e}")
+
+        return False
+
+    def _port_exposed_in_docker_mapping(self, target_port: int, port_mapping: str) -> bool:
+        """Check if a target port is exposed in a Docker port mapping string.
+
+        Handles various Docker port mapping formats:
+        - :8080->8080/tcp
+        - 0.0.0.0:8080->8080/tcp
+        - 127.0.0.1:7080-7081->7080-7081/tcp (port ranges)
+        - etc.
+
+        Args:
+            target_port: Port number to look for
+            port_mapping: Docker port mapping string from `docker ps --format "{{.Ports}}"`
+
+        Returns:
+            True if target_port is exposed in this mapping
+        """
+        if not port_mapping:
+            return False
+
+        # Handle simple cases first
+        if f":{target_port}->" in port_mapping or f"0.0.0.0:{target_port}" in port_mapping:
+            return True
+
+        # Handle port ranges like "127.0.0.1:7080-7081->7080-7081/tcp"
+        import re
+
+        # Extract port ranges from the left side of ->
+        range_pattern = r"(\d+)-(\d+)"
+        matches = re.findall(range_pattern, port_mapping)
+
+        for start_port, end_port in matches:
+            try:
+                start = int(start_port)
+                end = int(end_port)
+                if start <= target_port <= end:
+                    return True
+            except ValueError:
+                continue
+
+        # Also check individual port mappings
+        port_pattern = r":(\d+)(?:->|\s|/|$)"
+        individual_ports = re.findall(port_pattern, port_mapping)
+
+        for port_str in individual_ports:
+            try:
+                if int(port_str) == target_port:
+                    return True
+            except ValueError:
+                continue
 
         return False
 

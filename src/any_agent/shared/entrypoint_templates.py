@@ -6,7 +6,6 @@ from dataclasses import dataclass
 
 from .chat_endpoints_generator import ChatEndpointsGenerator
 from .ui_routes_generator import UIRoutesGenerator
-from .url_utils import localhost_urls
 
 logger = logging.getLogger(__name__)
 
@@ -120,15 +119,17 @@ try:
     # Load agent
     root_agent = load_agent()
     logger.info(f"✅ Loaded ADK agent: {{root_agent}}")
-    
-    # Upgrade agent for A2A context isolation
+
+    # Upgrade agent for A2A context isolation (optional for localhost)
     try:
         from any_agent.core.context_aware_wrapper import upgrade_agent_for_context_isolation
         root_agent = upgrade_agent_for_context_isolation(root_agent)
         logger.info("✅ Agent upgraded for A2A context isolation")
+    except ImportError:
+        logger.info("Context isolation wrapper not available in localhost mode")
     except Exception as upgrade_error:
         logger.warning(f"Failed to upgrade agent for context isolation: {{upgrade_error}}")
-    
+
     # Create A2A app using Google's official utilities
     a2a_app = to_a2a(root_agent, port={context.port})
     logger.info("✅ Created A2A app using Google ADK utilities")
@@ -221,27 +222,35 @@ try:
     root_agent = load_agent()
     logger.info("Strands agent loaded successfully")
     
-    # Upgrade agent for A2A context isolation
+    # Upgrade agent for A2A context isolation (optional for localhost)
     try:
         from any_agent.core.context_aware_wrapper import upgrade_agent_for_context_isolation
         root_agent = upgrade_agent_for_context_isolation(root_agent)
         logger.info("✅ Agent upgraded for A2A context isolation")
+    except ImportError:
+        logger.info("Context isolation wrapper not available in localhost mode")
     except Exception as upgrade_error:
         logger.warning(f"Failed to upgrade agent for context isolation: {{upgrade_error}}")
-    
+
     # Import Strands A2A server components
     from strands.multiagent.a2a import A2AServer
-    from any_agent.shared.strands_context_executor import ContextAwareStrandsA2AExecutor
+    try:
+        from any_agent.shared.strands_context_executor import ContextAwareStrandsA2AExecutor
+        # Create custom executor if available
+        custom_executor = ContextAwareStrandsA2AExecutor(root_agent)
+        logger.info("✅ Using context-aware Strands executor")
+    except ImportError:
+        # Fallback to default executor in localhost mode
+        from a2a.server.agents import A2AAgent
+        custom_executor = A2AAgent(root_agent)
+        logger.info("Using default A2A agent executor")
     from a2a.server.request_handlers import DefaultRequestHandler
     from a2a.server.tasks import InMemoryTaskStore
     from a2a.server.apps import A2AStarletteApplication
     from a2a.types import AgentCapabilities, AgentCard, AgentSkill
     
     # Create Strands A2A server with custom executor
-    logger.info(f"Creating Strands A2A server with context isolation for port {context.port}...")
-    
-    # Create custom executor
-    custom_executor = ContextAwareStrandsA2AExecutor(root_agent)
+    logger.info(f"Creating Strands A2A server for port {context.port}...")
     
     # Create agent card with capabilities and skills
     def generate_agent_card():
@@ -260,7 +269,7 @@ try:
         return AgentCard(
             name=f"{context.agent_name} Agent",
             description=f"Containerized AWS Strands agent",
-            url=localhost_urls.ui_url(context.port, "/"),
+            url=f"http://localhost:{context.port}/",
             version="1.0.0",
             defaultInputModes=["text"],
             defaultOutputModes=["text"],
@@ -302,8 +311,8 @@ try:
     {ui_routes}
     
     logger.info(f"🌐 A2A server ready on port {context.port}")
-    logger.info(f"📋 Agent card: {localhost_urls.agent_card_url(context.port)}")
-    logger.info(f"🏥 Health check: {localhost_urls.health_url(context.port)}")
+    logger.info(f"📋 Agent card: http://localhost:{context.port}/.well-known/agent-card.json")
+    logger.info(f"🏥 Health check: http://localhost:{context.port}/health")
 
 except Exception as e:
     logger.error(f"❌ Failed to create A2A server: {{e}}")
@@ -374,15 +383,17 @@ try:
     logger.info("Loading agent...")
     root_agent = load_agent()
     logger.info("Agent loaded successfully")
-    
-    # Upgrade agent for A2A context isolation
+
+    # Upgrade agent for A2A context isolation (optional for localhost)
     try:
         from any_agent.core.context_aware_wrapper import upgrade_agent_for_context_isolation
         root_agent = upgrade_agent_for_context_isolation(root_agent)
         logger.info("✅ Agent upgraded for A2A context isolation")
+    except ImportError:
+        logger.info("Context isolation wrapper not available in localhost mode")
     except Exception as upgrade_error:
         logger.warning(f"Failed to upgrade agent for context isolation: {{upgrade_error}}")
-    
+
     # Create FastAPI app
     app = FastAPI(title="{context.agent_name}", description="Generic A2A Agent")
     
