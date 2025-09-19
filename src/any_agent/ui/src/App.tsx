@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router } from 'react-router-dom';
 import { ThemeProvider, CssBaseline, Box } from '@mui/material';
 import anyAgentTheme from '@/theme';
 import { AgentMetadata } from '@/types';
@@ -26,6 +26,10 @@ const App: React.FC = () => {
       window.history.replaceState({}, '', '/');
     }
   }, []);
+
+  // Force chat interface by default unless explicitly on /describe
+  const shouldShowDescription = window.location.pathname === '/describe' && !window.location.search.includes('force_chat=true');
+  console.log('shouldShowDescription:', shouldShowDescription, 'pathname:', window.location.pathname);
 
   useEffect(() => {
     const fetchAgentMetadata = async () => {
@@ -116,42 +120,21 @@ const App: React.FC = () => {
               flexDirection: 'column',
             }}
           >
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <>
-                    {console.log('Rendering ChatPage for / route')}
-                    <ChatPage
-                      agentMetadata={agentMetadata}
-                      onAgentMetadataUpdate={handleAgentMetadataUpdate}
-                    />
-                  </>
-                }
-              />
-              <Route
-                path="/describe"
-                element={
-                  <>
-                    {console.log('Rendering DescriptionPage for /describe route')}
-                    <DescriptionPage agentMetadata={agentMetadata} />
-                  </>
-                }
-              />
-              {/* Fallback route */}
-              <Route
-                path="*"
-                element={
-                  <>
-                    {console.log('Rendering ChatPage for fallback route, pathname:', window.location.pathname)}
-                    <ChatPage
-                      agentMetadata={agentMetadata}
-                      onAgentMetadataUpdate={handleAgentMetadataUpdate}
-                    />
-                  </>
-                }
-              />
-            </Routes>
+            {/* Direct conditional rendering to bypass router issues */}
+            {shouldShowDescription ? (
+              <>
+                {console.log('Rendering DescriptionPage based on direct pathname check')}
+                <DescriptionPage agentMetadata={agentMetadata} />
+              </>
+            ) : (
+              <>
+                {console.log('Rendering ChatPage as default (not DescriptionPage)')}
+                <ChatPage
+                  agentMetadata={agentMetadata}
+                  onAgentMetadataUpdate={handleAgentMetadataUpdate}
+                />
+              </>
+            )}
           </Box>
 
           <Footer agentMetadata={agentMetadata} />
