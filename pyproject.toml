@@ -1,6 +1,6 @@
 [project]
 name = "any-agent-wrapper"
-version = "0.2.1"
+version = "0.2.2"
 description = "Universal framework for containerizing AI agents from any framework (Google ADK, AWS Strands, LangChain) into standardized Docker containers with A2A protocol support"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -124,7 +124,7 @@ exclude = [
     "src/any_agent/ui/node_modules/",
     "src/any_agent/ui/src/",
     "src/any_agent/ui/package*.json",
-    "src/any_agent/ui/tsconfig*.json", 
+    "src/any_agent/ui/tsconfig*.json",
     "src/any_agent/ui/vite.config.ts",
     "src/any_agent/ui/.eslintrc.cjs",
     "src/any_agent/ui/.gitignore",
