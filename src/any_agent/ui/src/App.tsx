@@ -17,6 +17,7 @@ const App: React.FC = () => {
   console.log('App component initializing');
   console.log('Current URL:', window.location.href);
   console.log('Current pathname:', window.location.pathname);
+  console.log('UI Build timestamp: 2025-01-19T18:15:00Z - Router Bypass Fix v0.2.5');
 
   // Force navigation to root if we're on describe page but want chat interface
   useEffect(() => {
@@ -27,9 +28,21 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Force chat interface by default unless explicitly on /describe
-  const shouldShowDescription = window.location.pathname === '/describe' && !window.location.search.includes('force_chat=true');
-  console.log('shouldShowDescription:', shouldShowDescription, 'pathname:', window.location.pathname);
+  // Force chat interface by default - NEVER show description unless explicitly requested
+  const currentPath = window.location.pathname;
+  const hasForceChat = window.location.search.includes('force_chat=true');
+  const isExplicitlyDescribe = currentPath === '/describe' && !hasForceChat;
+
+  // OVERRIDE: Always show chat interface for now to debug the issue
+  const shouldShowDescription = false; // Temporarily force chat interface
+
+  console.log('PATH DEBUG:', {
+    currentPath,
+    hasForceChat,
+    isExplicitlyDescribe,
+    shouldShowDescription,
+    search: window.location.search
+  });
 
   useEffect(() => {
     const fetchAgentMetadata = async () => {
