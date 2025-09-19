@@ -1,6 +1,6 @@
 [project]
 name = "any-agent-wrapper"
-version = "0.2.7"
+version = "0.2.8"
 description = "Universal framework for containerizing AI agents from any framework (Google ADK, AWS Strands, LangChain) into standardized Docker containers with A2A protocol support"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -160,6 +160,9 @@ exclude = [
     ".github/",
     ".idea/",
 ]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/any_agent/ui/dist" = "any_agent/ui/dist"
 
 [tool.hatch.build.targets.sdist.force-include]
 "src/any_agent/ui/dist" = "src/any_agent/ui/dist"

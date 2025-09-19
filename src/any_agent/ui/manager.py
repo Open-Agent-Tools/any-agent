@@ -14,33 +14,31 @@ class UIBuildManager:
     """Manages the React SPA build process for Any Agent UI."""
 
     def __init__(self):
-        # Check if we're in development mode (source code available)
+        # Always use the installed package location
         current_dir = Path(__file__).parent
 
-        # Look for development source directory
-        possible_dev_dir = Path(os.getcwd()) / "src" / "any_agent" / "ui"
-        if possible_dev_dir.exists() and (possible_dev_dir / "package.json").exists():
-            self.ui_source_dir = possible_dev_dir
-            logger.debug(
-                f"UIManager: Using development UI source at {self.ui_source_dir}"
-            )
-        else:
+        # Check if we're in a development environment by looking for source files
+        # relative to this file's location (not cwd)
+        dev_marker_file = current_dir / "package.json"
+
+        if dev_marker_file.exists():
+            # We're in development mode - source files are available
             self.ui_source_dir = current_dir
-            logger.debug(
-                f"UIManager: Using installed UI source at {self.ui_source_dir}"
-            )
+            logger.info(f"UIManager: Development mode - using source at {self.ui_source_dir}")
+        else:
+            # We're in PyPI installation mode - use the installed package location
+            self.ui_source_dir = current_dir
+            logger.info(f"UIManager: PyPI installation mode - using package at {self.ui_source_dir}")
 
         self.dist_dir = self.ui_source_dir / "dist"
         self.package_json = self.ui_source_dir / "package.json"
 
-        logger.debug(
+        logger.info(
             f"UIManager: dist_dir={self.dist_dir}, package_json={self.package_json}"
         )
-        logger.debug(f"UIManager: dist_dir exists={self.dist_dir.exists()}")
+        logger.info(f"UIManager: dist_dir exists={self.dist_dir.exists()}")
         if self.dist_dir.exists():
-            logger.debug(
-                f"UIManager: dist_dir contents={list(self.dist_dir.iterdir())}"
-            )
+            logger.info(f"UIManager: dist_dir contents={list(self.dist_dir.iterdir())}")
 
     def is_ui_built(self) -> bool:
         """Check if UI is already built."""
@@ -63,7 +61,7 @@ class UIBuildManager:
                     )
                 return False
 
-        logger.debug(f"UI built check passed - found files at {self.dist_dir}")
+        logger.info(f"UI built check passed - found files at {self.dist_dir}")
         return True
 
     def is_pypi_installation(self) -> bool:
@@ -231,7 +229,7 @@ class UIBuildManager:
 
     def copy_dist_to_context(self, build_context_path: Path) -> Dict[str, Any]:
         """Copy built UI files to Docker build context."""
-        logger.debug(
+        logger.info(
             f"Attempting to copy UI files from {self.dist_dir} to {build_context_path}"
         )
 
