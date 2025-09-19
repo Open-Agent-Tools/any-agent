@@ -622,6 +622,52 @@ def main(
                                     click.echo(
                                         f"     Recommendation: {a2a_tests['recommendation']}"
                                     )
+
+                    # UI Availability Tests
+                    ui_tests = test_results.get("ui_tests", {})
+                    if ui_tests:
+                        if ui_tests.get("success"):
+                            click.echo("  ✅ UI availability: PASSED")
+                            if verbose:
+                                initial = ui_tests.get("initial_load", {})
+                                if initial.get("load_time_ms"):
+                                    click.echo(
+                                        f"     Load time: {initial['load_time_ms']:.1f}ms"
+                                    )
+                                if ui_tests.get("retry_load") and not ui_tests[
+                                    "initial_load"
+                                ].get("has_react_root"):
+                                    click.echo(
+                                        "     ⚠️  Required retry after initial failure"
+                                    )
+                        else:
+                            click.echo("  ❌ UI availability: FAILED")
+                            if verbose:
+                                initial = ui_tests.get("initial_load", {})
+                                retry = ui_tests.get("retry_load", {})
+
+                                if initial.get("error"):
+                                    click.echo(
+                                        f"     Initial load error: {initial['error']}"
+                                    )
+                                elif not initial.get("has_react_root"):
+                                    click.echo(
+                                        "     Issue: React root element not found"
+                                    )
+                                elif not initial.get("has_js_assets"):
+                                    click.echo(
+                                        "     Issue: JavaScript assets not found"
+                                    )
+
+                                if retry.get("has_react_root") and retry.get(
+                                    "has_js_assets"
+                                ):
+                                    click.echo(
+                                        "     Note: UI works after retry - timing issue detected"
+                                    )
+
+                                if ui_tests.get("error"):
+                                    click.echo(f"     Error: {ui_tests['error']}")
                     else:
                         # Backward compatibility: show old format tests
                         # Health check

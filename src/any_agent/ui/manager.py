@@ -1,7 +1,6 @@
 """UI Build Manager for Any Agent framework."""
 
 import logging
-import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -24,11 +23,15 @@ class UIBuildManager:
         if dev_marker_file.exists():
             # We're in development mode - source files are available
             self.ui_source_dir = current_dir
-            logger.info(f"UIManager: Development mode - using source at {self.ui_source_dir}")
+            logger.info(
+                f"UIManager: Development mode - using source at {self.ui_source_dir}"
+            )
         else:
             # We're in PyPI installation mode - use the installed package location
             self.ui_source_dir = current_dir
-            logger.info(f"UIManager: PyPI installation mode - using package at {self.ui_source_dir}")
+            logger.info(
+                f"UIManager: PyPI installation mode - using package at {self.ui_source_dir}"
+            )
 
         self.dist_dir = self.ui_source_dir / "dist"
         self.package_json = self.ui_source_dir / "package.json"

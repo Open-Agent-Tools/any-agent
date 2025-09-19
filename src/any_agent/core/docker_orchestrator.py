@@ -317,6 +317,10 @@ class AgentOrchestrator:
                 "reason": "A2A testing disabled via CLI flag",
             }
 
+        # UI Availability Tests (check if React SPA loads properly)
+        logger.info("Running UI availability tests...")
+        results["ui_tests"] = self._test_ui_availability(port)
+
         return results
 
     def _test_http_endpoints(self, port: int) -> Dict[str, Any]:
@@ -424,6 +428,117 @@ class AgentOrchestrator:
                 "error": f"A2A validation failed: {e}",
                 "details": {"error_type": type(e).__name__},
             }
+
+    def _test_ui_availability(self, port: int) -> Dict[str, Any]:
+        """Test UI availability and React SPA loading."""
+        import time
+        from typing import Dict, Any
+
+        results: Dict[str, Any] = {
+            "success": False,
+            "initial_load": {},
+            "retry_load": {},
+            "assets_check": {},
+            "timing": {},
+        }
+
+        base_url = f"http://localhost:{port}"
+
+        try:
+            import requests
+
+            session = requests.Session()
+
+            # Test 1: Initial UI load
+            start_time = time.time()
+            try:
+                response = session.get(base_url, timeout=10)
+                initial_load_time = (time.time() - start_time) * 1000
+
+                results["initial_load"] = {
+                    "status_code": response.status_code,
+                    "content_type": response.headers.get("content-type", ""),
+                    "load_time_ms": round(initial_load_time, 1),
+                    "is_html": response.headers.get("content-type", "").startswith(
+                        "text/html"
+                    ),
+                    "has_react_root": '<div id="root">' in response.text,
+                    "has_js_assets": "/assets/" in response.text
+                    and ".js" in response.text,
+                    "content_length": len(response.text),
+                }
+
+                # Check if we got the proper React SPA HTML (not fallback)
+                is_react_spa = (
+                    response.status_code == 200
+                    and results["initial_load"]["has_react_root"]
+                    and results["initial_load"]["has_js_assets"]
+                )
+
+            except Exception as e:
+                results["initial_load"] = {"error": str(e)}
+                is_react_spa = False
+
+            # Test 2: Assets availability check
+            if is_react_spa:
+                try:
+                    # Check if assets directory is accessible
+                    assets_response = session.get(f"{base_url}/assets/", timeout=10)
+                    results["assets_check"] = {
+                        "assets_dir_accessible": assets_response.status_code != 404,
+                        "status_code": assets_response.status_code,
+                    }
+                except Exception as e:
+                    results["assets_check"] = {"error": str(e)}
+
+            # Test 3: Retry after delay (to check for timing issues)
+            if not is_react_spa:
+                time.sleep(2)  # Wait 2 seconds
+                start_time = time.time()
+                try:
+                    retry_response = session.get(base_url, timeout=10)
+                    retry_load_time = (time.time() - start_time) * 1000
+
+                    results["retry_load"] = {
+                        "status_code": retry_response.status_code,
+                        "load_time_ms": round(retry_load_time, 1),
+                        "has_react_root": '<div id="root">' in retry_response.text,
+                        "has_js_assets": "/assets/" in retry_response.text
+                        and ".js" in retry_response.text,
+                        "content_changed": retry_response.text
+                        != results["initial_load"].get("content", ""),
+                    }
+
+                    # Check if retry succeeded
+                    is_react_spa = (
+                        retry_response.status_code == 200
+                        and results["retry_load"]["has_react_root"]
+                        and results["retry_load"]["has_js_assets"]
+                    )
+
+                except Exception as e:
+                    results["retry_load"] = {"error": str(e)}
+
+            # Overall success determination
+            results["success"] = is_react_spa
+
+            # Timing analysis
+            if results["initial_load"].get("load_time_ms") and results[
+                "retry_load"
+            ].get("load_time_ms"):
+                results["timing"] = {
+                    "initial_faster": results["initial_load"]["load_time_ms"]
+                    < results["retry_load"]["load_time_ms"],
+                    "timing_difference_ms": abs(
+                        results["retry_load"]["load_time_ms"]
+                        - results["initial_load"]["load_time_ms"]
+                    ),
+                }
+
+        except Exception as e:
+            results["error"] = str(e)
+
+        return results
 
     def register_with_helmsman(
         self,
