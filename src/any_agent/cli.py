@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+from . import __version__
 from .core.docker_orchestrator import AgentOrchestrator
 from .core.localhost_orchestrator import LocalhostOrchestrator
 from .core.port_checker import PortChecker
@@ -16,7 +17,7 @@ from .shared.url_utils import localhost_urls
 
 
 @click.command()
-@click.argument("agent_path", type=click.Path(exists=True, path_type=Path))
+@click.argument("agent_path", type=click.Path(path_type=Path), required=False)
 @click.help_option("-h", "--help")
 @click.option(
     "-d",
@@ -64,6 +65,7 @@ from .shared.url_utils import localhost_urls
     help="Unique agent identifier for Docker naming",
 )
 @click.option("--verbose", is_flag=True, help="Enable verbose logging")
+@click.option("--version", is_flag=True, help="Show version and exit")
 @click.option(
     "--dry-run", is_flag=True, help="Show what would be done without executing"
 )
@@ -117,7 +119,7 @@ from .shared.url_utils import localhost_urls
     help="Disable file watching and hot reload in localhost mode",
 )
 def main(
-    agent_path: Path,
+    agent_path: Optional[Path],
     directory: Optional[Path],
     framework: str,
     port: int,
@@ -128,6 +130,7 @@ def main(
     output: Optional[Path],
     agent_name: Optional[str],
     verbose: bool,
+    version: bool,
     dry_run: bool,
     remove: bool,
     yes_to_all: bool,
@@ -161,6 +164,21 @@ def main(
       # Remove deployed agent
       python -m any_agent ./my_agent --remove
     """
+    # Handle version flag first
+    if version:
+        click.echo(f"any-agent {__version__}")
+        return
+
+    # Check if agent_path is required but not provided
+    if agent_path is None:
+        click.echo("Error: Missing argument 'AGENT_PATH'.")
+        raise click.Abort()
+
+    # Validate that the agent path exists
+    if not agent_path.exists():
+        click.echo(f"Error: Path '{agent_path}' does not exist.")
+        raise click.Abort()
+
     # Setup logging
     if verbose:
         logging.basicConfig(

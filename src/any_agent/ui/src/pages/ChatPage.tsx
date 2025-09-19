@@ -86,12 +86,14 @@ const ChatPage: React.FC<ChatPageProps> = ({ agentMetadata }) => {
   const initializeChat = useCallback(async () => {
     try {
       console.log('Starting chat initialization...');
+      console.log('Current location:', window.location.href);
+      console.log('API base URL:', window.location.origin);
       updateConnectionStatus('connecting');
-      
+
       // Generate session ID
       const newSessionId = generateSessionId();
       console.log('Sending session creation request...', { session_id: newSessionId });
-      
+
       const response = await api.createChatSession(newSessionId);
       console.log('Session creation result:', response);
       
@@ -112,14 +114,15 @@ const ChatPage: React.FC<ChatPageProps> = ({ agentMetadata }) => {
       
     } catch (error) {
       console.error('Chat initialization failed:', error);
+      console.log('API endpoints may not be available, continuing with UI...');
       updateConnectionStatus('error');
       addMessage({
-        content: `Connection error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        content: `Connection error: ${error instanceof Error ? error.message : 'Unknown error'}. The chat interface is available but agent responses may be limited.`,
         sender: 'agent',
         message_type: 'error',
         timestamp: formatTimestamp(),
       });
-      
+
       // Keep trying to reconnect every 5 seconds
       setTimeout(initializeChat, 5000);
     }

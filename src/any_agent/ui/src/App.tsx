@@ -15,6 +15,17 @@ const App: React.FC = () => {
   const [error, setError] = useState<Error | null>(null);
 
   console.log('App component initializing');
+  console.log('Current URL:', window.location.href);
+  console.log('Current pathname:', window.location.pathname);
+
+  // Force navigation to root if we're on describe page but want chat interface
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('force_chat') === 'true') {
+      console.log('Force chat parameter detected, navigating to root');
+      window.history.replaceState({}, '', '/');
+    }
+  }, []);
 
   useEffect(() => {
     const fetchAgentMetadata = async () => {
@@ -109,24 +120,35 @@ const App: React.FC = () => {
               <Route
                 path="/"
                 element={
-                  <ChatPage
-                    agentMetadata={agentMetadata}
-                    onAgentMetadataUpdate={handleAgentMetadataUpdate}
-                  />
+                  <>
+                    {console.log('Rendering ChatPage for / route')}
+                    <ChatPage
+                      agentMetadata={agentMetadata}
+                      onAgentMetadataUpdate={handleAgentMetadataUpdate}
+                    />
+                  </>
                 }
               />
               <Route
                 path="/describe"
-                element={<DescriptionPage agentMetadata={agentMetadata} />}
+                element={
+                  <>
+                    {console.log('Rendering DescriptionPage for /describe route')}
+                    <DescriptionPage agentMetadata={agentMetadata} />
+                  </>
+                }
               />
               {/* Fallback route */}
               <Route
                 path="*"
                 element={
-                  <ChatPage
-                    agentMetadata={agentMetadata}
-                    onAgentMetadataUpdate={handleAgentMetadataUpdate}
-                  />
+                  <>
+                    {console.log('Rendering ChatPage for fallback route, pathname:', window.location.pathname)}
+                    <ChatPage
+                      agentMetadata={agentMetadata}
+                      onAgentMetadataUpdate={handleAgentMetadataUpdate}
+                    />
+                  </>
                 }
               />
             </Routes>
