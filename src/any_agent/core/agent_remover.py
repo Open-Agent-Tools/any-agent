@@ -92,12 +92,14 @@ class AgentRemover:
             logger.warning(f"Failed to connect to Docker: {e}")
             self.docker_client = None
 
-    def find_agent_artifacts(self, agent_name: str, context_manager: Optional[AgentContextManager]) -> AgentArtifacts:
+    def find_agent_artifacts(
+        self, agent_name: str, context_manager: Optional[AgentContextManager]
+    ) -> AgentArtifacts:
         """Find all artifacts associated with an agent."""
-        containers = []
-        images = []
-        build_contexts = []
-        localhost_servers = []
+        containers: List[Dict[str, Any]] = []
+        images: List[Dict[str, Any]] = []
+        build_contexts: List[Path] = []
+        localhost_servers: List[Dict[str, Any]] = []
         context_info = None
 
         # Load context if available
@@ -111,10 +113,14 @@ class AgentRemover:
         images.extend(self._find_images_from_context(agent_name, context_info))
 
         # Find build contexts from context
-        build_contexts.extend(self._find_build_contexts_from_context(agent_name, context_info))
+        build_contexts.extend(
+            self._find_build_contexts_from_context(agent_name, context_info)
+        )
 
         # Find localhost servers from context
-        localhost_servers.extend(self._find_localhost_servers_from_context(agent_name, context_info))
+        localhost_servers.extend(
+            self._find_localhost_servers_from_context(agent_name, context_info)
+        )
 
         # Also search Docker directly by name patterns
         containers.extend(self._find_containers_by_name(agent_name))
@@ -128,74 +134,102 @@ class AgentRemover:
             context_info=context_info,
         )
 
-    def _find_containers_from_context(self, agent_name: str, context: Optional[AgentBuildContext]) -> List[Dict[str, Any]]:
+    def _find_containers_from_context(
+        self, agent_name: str, context: Optional[AgentBuildContext]
+    ) -> List[Dict[str, Any]]:
         """Find containers from agent context."""
-        containers = []
+        containers: List[Dict[str, Any]] = []
         if not context or not self.docker_client:
             return containers
 
         try:
             # Check top-level container_id field first
-            if hasattr(context, 'container_id') and context.container_id:
+            if hasattr(context, "container_id") and context.container_id:
                 try:
                     container = self.docker_client.containers.get(context.container_id)
-                    containers.append({
-                        "id": container.id,
-                        "name": container.name,
-                        "status": container.status,
-                        "image": container.image.tags[0] if container.image.tags else container.image.id[:12],
-                    })
+                    containers.append(
+                        {
+                            "id": container.id,
+                            "name": container.name,
+                            "status": container.status,
+                            "image": container.image.tags[0]
+                            if container.image.tags
+                            else container.image.id[:12],
+                        }
+                    )
                 except docker.errors.NotFound:
-                    logger.warning(f"Container {context.container_id} from context not found")
+                    logger.warning(
+                        f"Container {context.container_id} from context not found"
+                    )
 
             # Check multi-instance containers
             for instance in context.docker_instances:
                 if instance.container_id:
                     try:
-                        container = self.docker_client.containers.get(instance.container_id)
-                        containers.append({
-                            "id": container.id,
-                            "name": container.name,
-                            "status": container.status,
-                            "image": container.image.tags[0] if container.image.tags else container.image.id[:12],
-                        })
+                        container = self.docker_client.containers.get(
+                            instance.container_id
+                        )
+                        containers.append(
+                            {
+                                "id": container.id,
+                                "name": container.name,
+                                "status": container.status,
+                                "image": container.image.tags[0]
+                                if container.image.tags
+                                else container.image.id[:12],
+                            }
+                        )
                     except docker.errors.NotFound:
-                        logger.warning(f"Container {instance.container_id} from context not found")
+                        logger.warning(
+                            f"Container {instance.container_id} from context not found"
+                        )
 
             # Check legacy single instance
             if context.docker_instance and context.docker_instance.container_id:
                 try:
-                    container = self.docker_client.containers.get(context.docker_instance.container_id)
-                    containers.append({
-                        "id": container.id,
-                        "name": container.name,
-                        "status": container.status,
-                        "image": container.image.tags[0] if container.image.tags else container.image.id[:12],
-                    })
+                    container = self.docker_client.containers.get(
+                        context.docker_instance.container_id
+                    )
+                    containers.append(
+                        {
+                            "id": container.id,
+                            "name": container.name,
+                            "status": container.status,
+                            "image": container.image.tags[0]
+                            if container.image.tags
+                            else container.image.id[:12],
+                        }
+                    )
                 except docker.errors.NotFound:
-                    logger.warning(f"Container {context.docker_instance.container_id} from context not found")
+                    logger.warning(
+                        f"Container {context.docker_instance.container_id} from context not found"
+                    )
 
         except Exception as e:
             logger.warning(f"Error finding containers from context: {e}")
 
         return containers
 
-    def _find_images_from_context(self, agent_name: str, context: Optional[AgentBuildContext]) -> List[Dict[str, Any]]:
+    def _find_images_from_context(
+        self, agent_name: str, context: Optional[AgentBuildContext]
+    ) -> List[Dict[str, Any]]:
         """Find images from agent context."""
-        images = []
+        images: List[Dict[str, Any]] = []
         if not context or not self.docker_client:
             return images
 
         try:
             # Check top-level image_name field first (images are found by name, not ID)
-            if hasattr(context, 'image_name') and context.image_name:
+            if hasattr(context, "image_name") and context.image_name:
                 try:
                     image = self.docker_client.images.get(context.image_name)
-                    images.append({
-                        "id": image.id,
-                        "tags": image.tags,
-                        "size": image.attrs.get("Size", 0),
-                    })
+                    images.append(
+                        {
+                            "id": image.id,
+                            "tags": image.tags,
+                            "size": image.attrs.get("Size", 0),
+                        }
+                    )
                 except docker.errors.ImageNotFound:
                     logger.warning(f"Image {context.image_name} from context not found")
 
@@ -204,34 +238,46 @@ class AgentRemover:
                 if instance.image_id:
                     try:
                         image = self.docker_client.images.get(instance.image_id)
-                        images.append({
-                            "id": image.id,
-                            "tags": image.tags,
-                            "size": image.attrs.get("Size", 0),
-                        })
+                        images.append(
+                            {
+                                "id": image.id,
+                                "tags": image.tags,
+                                "size": image.attrs.get("Size", 0),
+                            }
+                        )
                     except docker.errors.ImageNotFound:
-                        logger.warning(f"Image {instance.image_id} from context not found")
+                        logger.warning(
+                            f"Image {instance.image_id} from context not found"
+                        )
 
             # Check legacy single instance
             if context.docker_instance and context.docker_instance.image_id:
                 try:
-                    image = self.docker_client.images.get(context.docker_instance.image_id)
-                    images.append({
-                        "id": image.id,
-                        "tags": image.tags,
-                        "size": image.attrs.get("Size", 0),
-                    })
+                    image = self.docker_client.images.get(
+                        context.docker_instance.image_id
+                    )
+                    images.append(
+                        {
+                            "id": image.id,
+                            "tags": image.tags,
+                            "size": image.attrs.get("Size", 0),
+                        }
+                    )
                 except docker.errors.ImageNotFound:
-                    logger.warning(f"Image {context.docker_instance.image_id} from context not found")
+                    logger.warning(
+                        f"Image {context.docker_instance.image_id} from context not found"
+                    )
 
         except Exception as e:
             logger.warning(f"Error finding images from context: {e}")
 
         return images
 
-    def _find_build_contexts_from_context(self, agent_name: str, context: Optional[AgentBuildContext]) -> List[Path]:
+    def _find_build_contexts_from_context(
+        self, agent_name: str, context: Optional[AgentBuildContext]
+    ) -> List[Path]:
         """Find build contexts from agent context."""
-        build_contexts = []
+        build_contexts: List[Path] = []
         if not context:
             return build_contexts
 
@@ -240,9 +286,11 @@ class AgentRemover:
 
         return build_contexts
 
-    def _find_localhost_servers_from_context(self, agent_name: str, context: Optional[AgentBuildContext]) -> List[Dict[str, Any]]:
+    def _find_localhost_servers_from_context(
+        self, agent_name: str, context: Optional[AgentBuildContext]
+    ) -> List[Dict[str, Any]]:
         """Find localhost servers from agent context."""
-        servers = []
+        servers: List[Dict[str, Any]] = []
         if not context:
             return servers
 
@@ -252,28 +300,40 @@ class AgentRemover:
                 if server.pid and psutil.pid_exists(server.pid):
                     try:
                         process = psutil.Process(server.pid)
-                        servers.append({
-                            "pid": server.pid,
-                            "port": server.port,
-                            "status": process.status(),
-                            "command": " ".join(process.cmdline()[:3]) + "..." if process.cmdline() else "unknown",
-                        })
+                        servers.append(
+                            {
+                                "pid": server.pid,
+                                "port": server.port,
+                                "status": process.status(),
+                                "command": " ".join(process.cmdline()[:3]) + "..."
+                                if process.cmdline()
+                                else "unknown",
+                            }
+                        )
                     except (psutil.NoSuchProcess, psutil.AccessDenied):
-                        logger.warning(f"Process {server.pid} from context not accessible")
+                        logger.warning(
+                            f"Process {server.pid} from context not accessible"
+                        )
 
             # Check legacy single server
             if context.localhost_server and context.localhost_server.pid:
                 if psutil.pid_exists(context.localhost_server.pid):
                     try:
                         process = psutil.Process(context.localhost_server.pid)
-                        servers.append({
-                            "pid": context.localhost_server.pid,
-                            "port": context.localhost_server.port,
-                            "status": process.status(),
-                            "command": " ".join(process.cmdline()[:3]) + "..." if process.cmdline() else "unknown",
-                        })
+                        servers.append(
+                            {
+                                "pid": context.localhost_server.pid,
+                                "port": context.localhost_server.port,
+                                "status": process.status(),
+                                "command": " ".join(process.cmdline()[:3]) + "..."
+                                if process.cmdline()
+                                else "unknown",
+                            }
+                        )
                     except (psutil.NoSuchProcess, psutil.AccessDenied):
-                        logger.warning(f"Process {context.localhost_server.pid} from context not accessible")
+                        logger.warning(
+                            f"Process {context.localhost_server.pid} from context not accessible"
+                        )
 
         except Exception as e:
             logger.warning(f"Error finding localhost servers from context: {e}")
@@ -282,7 +342,7 @@ class AgentRemover:
 
     def _find_containers_by_name(self, agent_name: str) -> List[Dict[str, Any]]:
         """Find containers by name patterns."""
-        containers = []
+        containers: List[Dict[str, Any]] = []
         if not self.docker_client:
             return containers
 
@@ -290,12 +350,16 @@ class AgentRemover:
             all_containers = self.docker_client.containers.list(all=True)
             for container in all_containers:
                 if self._is_agent_container(container, agent_name):
-                    containers.append({
-                        "id": container.id,
-                        "name": container.name,
-                        "status": container.status,
-                        "image": container.image.tags[0] if container.image.tags else container.image.id[:12],
-                    })
+                    containers.append(
+                        {
+                            "id": container.id,
+                            "name": container.name,
+                            "status": container.status,
+                            "image": container.image.tags[0]
+                            if container.image.tags
+                            else container.image.id[:12],
+                        }
+                    )
         except Exception as e:
             logger.warning(f"Error finding containers by name: {e}")
 
@@ -303,7 +367,7 @@ class AgentRemover:
 
     def _find_images_by_name(self, agent_name: str) -> List[Dict[str, Any]]:
         """Find images by name patterns."""
-        images = []
+        images: List[Dict[str, Any]] = []
         if not self.docker_client:
             return images
 
@@ -311,11 +375,13 @@ class AgentRemover:
             all_images = self.docker_client.images.list()
             for image in all_images:
                 if self._is_agent_image(image, agent_name):
-                    images.append({
-                        "id": image.id,
-                        "tags": image.tags,
-                        "size": image.attrs.get("Size", 0),
-                    })
+                    images.append(
+                        {
+                            "id": image.id,
+                            "tags": image.tags,
+                            "size": image.attrs.get("Size", 0),
+                        }
+                    )
         except Exception as e:
             logger.warning(f"Error finding images by name: {e}")
 
@@ -346,7 +412,12 @@ class AgentRemover:
 
         return False
 
-    def remove_agent(self, agent_name: str, context_manager: Optional[AgentContextManager], force: bool = False) -> RemovalReport:
+    def remove_agent(
+        self,
+        agent_name: str,
+        context_manager: Optional[AgentContextManager],
+        force: bool = False,
+    ) -> RemovalReport:
         """Remove all agent artifacts and return detailed report."""
         report = RemovalReport(success=True, agent_name=agent_name)
 
@@ -357,7 +428,9 @@ class AgentRemover:
         for container in artifacts.containers:
             try:
                 if self.docker_client:
-                    docker_container = self.docker_client.containers.get(container["id"])
+                    docker_container = self.docker_client.containers.get(
+                        container["id"]
+                    )
                     docker_container.stop(timeout=10)
                     docker_container.remove(force=force)
                     report.containers_removed += 1
@@ -366,7 +439,9 @@ class AgentRemover:
                     raise Exception("Docker client not available")
             except Exception as e:
                 report.containers_failed += 1
-                report.errors.append(f"Failed to remove container {container['name']}: {e}")
+                report.errors.append(
+                    f"Failed to remove container {container['name']}: {e}"
+                )
                 report.success = False
 
         # Remove images
@@ -375,7 +450,9 @@ class AgentRemover:
                 if self.docker_client:
                     self.docker_client.images.remove(image["id"], force=force)
                     report.images_removed += 1
-                    logger.info(f"Removed image: {image['tags'][0] if image['tags'] else image['id'][:12]}")
+                    logger.info(
+                        f"Removed image: {image['tags'][0] if image['tags'] else image['id'][:12]}"
+                    )
                 else:
                     raise Exception("Docker client not available")
             except Exception as e:
@@ -397,7 +474,9 @@ class AgentRemover:
                     logger.info(f"Localhost server PID {server['pid']} already stopped")
             except Exception as e:
                 report.localhost_servers_failed += 1
-                report.errors.append(f"Failed to stop localhost server PID {server['pid']}: {e}")
+                report.errors.append(
+                    f"Failed to stop localhost server PID {server['pid']}: {e}"
+                )
                 report.success = False
 
         # Remove build contexts
@@ -412,18 +491,24 @@ class AgentRemover:
                     logger.info(f"Build context {build_context} already removed")
             except Exception as e:
                 report.build_contexts_failed += 1
-                report.errors.append(f"Failed to remove build context {build_context}: {e}")
+                report.errors.append(
+                    f"Failed to remove build context {build_context}: {e}"
+                )
                 report.success = False
 
         # Mark as removed in context
         if context_manager:
             try:
-                context_manager.mark_removed([{
-                    "containers_removed": report.containers_removed,
-                    "images_removed": report.images_removed,
-                    "localhost_servers_removed": report.localhost_servers_removed,
-                    "build_contexts_removed": report.build_contexts_removed,
-                }])
+                context_manager.mark_removed(
+                    [
+                        {
+                            "containers_removed": report.containers_removed,
+                            "images_removed": report.images_removed,
+                            "localhost_servers_removed": report.localhost_servers_removed,
+                            "build_contexts_removed": report.build_contexts_removed,
+                        }
+                    ]
+                )
             except Exception as e:
                 report.warnings.append(f"Failed to update context: {e}")
 
@@ -431,7 +516,7 @@ class AgentRemover:
 
     def list_all_agents(self) -> List[Dict[str, Any]]:
         """List all agents that can be removed across the system."""
-        agents = []
+        agents: List[Dict[str, Any]] = []
 
         if not self.docker_client:
             logger.warning("Docker not available for listing agents")
@@ -442,25 +527,31 @@ class AgentRemover:
             containers = self.docker_client.containers.list(all=True)
             for container in containers:
                 if self._is_any_agent_container(container):
-                    agents.append({
-                        "type": "docker_container",
-                        "name": container.name,
-                        "id": container.id,
-                        "status": container.status,
-                        "image": container.image.tags[0] if container.image.tags else container.image.id,
-                    })
+                    agents.append(
+                        {
+                            "type": "docker_container",
+                            "name": container.name,
+                            "id": container.id,
+                            "status": container.status,
+                            "image": container.image.tags[0]
+                            if container.image.tags
+                            else container.image.id,
+                        }
+                    )
 
             # Find images with any-agent patterns
             images = self.docker_client.images.list()
             for image in images:
                 if self._is_any_agent_image(image):
-                    agents.append({
-                        "type": "docker_image",
-                        "name": image.tags[0] if image.tags else image.id[:12],
-                        "id": image.id,
-                        "status": "available",
-                        "size": image.attrs.get("Size", 0),
-                    })
+                    agents.append(
+                        {
+                            "type": "docker_image",
+                            "name": image.tags[0] if image.tags else image.id[:12],
+                            "id": image.id,
+                            "status": "available",
+                            "size": image.attrs.get("Size", 0),
+                        }
+                    )
 
         except Exception as e:
             logger.error(f"Error listing Docker agents: {e}")
@@ -483,8 +574,7 @@ class AgentRemover:
         # Check labels
         labels = container.labels or {}
         return any(
-            key.startswith("any-agent") or
-            "any-agent" in str(value).lower()
+            key.startswith("any-agent") or "any-agent" in str(value).lower()
             for key, value in labels.items()
         )
 
@@ -498,4 +588,3 @@ class AgentRemover:
             any(pattern in tag.lower() for pattern in name_patterns)
             for tag in image.tags
         )
-

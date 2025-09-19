@@ -178,7 +178,9 @@ def main(
             context_manager = AgentContextManager(agent_path) if agent_path else None
 
             # Get agent name from context or use provided name
-            detected_agent_name = context_manager.get_agent_name() if context_manager else None
+            detected_agent_name = (
+                context_manager.get_agent_name() if context_manager else None
+            )
             final_agent_name = agent_name or detected_agent_name
 
             if not final_agent_name and agent_path:
@@ -187,7 +189,9 @@ def main(
                     temp_orchestrator = AgentOrchestrator()
                     adapter = temp_orchestrator.detect_framework(agent_path)
                     if adapter:
-                        metadata = temp_orchestrator.extract_metadata(agent_path, adapter)
+                        metadata = temp_orchestrator.extract_metadata(
+                            agent_path, adapter
+                        )
                         final_agent_name = metadata.name
                 except Exception:
                     pass
@@ -197,7 +201,9 @@ def main(
 
             # Remove mode - confirm and remove
             if not final_agent_name:
-                click.echo("❌ Could not determine agent name. Please use --agent-name to specify explicitly.")
+                click.echo(
+                    "❌ Could not determine agent name. Please use --agent-name to specify explicitly."
+                )
                 return
 
             artifacts = remover.find_agent_artifacts(final_agent_name, context_manager)
@@ -213,7 +219,9 @@ def main(
                 status_text = []
                 for container in artifacts.containers:
                     status_text.append(f"{container.get('status', 'unknown')}")
-                click.echo(f"  🐳 Docker containers: {summary['containers']} ({', '.join(status_text)})")
+                click.echo(
+                    f"  🐳 Docker containers: {summary['containers']} ({', '.join(status_text)})"
+                )
             if summary["images"]:
                 total_size = sum(img.get("size", 0) for img in artifacts.images)
                 size_gb = total_size / (1024**3) if total_size > 0 else 0
@@ -223,13 +231,17 @@ def main(
 
             # Confirmation prompt (skip if --yes-to-all is used)
             if not yes_to_all:
-                if not click.confirm(f"\n⚠️  This will permanently remove all traces of '{final_agent_name}'. Continue?"):
+                if not click.confirm(
+                    f"\n⚠️  This will permanently remove all traces of '{final_agent_name}'. Continue?"
+                ):
                     click.echo("Removal cancelled.")
                     return
 
             # Perform removal
             click.echo("🗑️  Removing artifacts...")
-            report = remover.remove_agent(final_agent_name, context_manager, force=yes_to_all)
+            report = remover.remove_agent(
+                final_agent_name, context_manager, force=yes_to_all
+            )
 
             # Report results
             if report.success:
@@ -249,6 +261,7 @@ def main(
             click.echo(f"❌ Removal failed: {e}")
             if verbose:
                 import traceback
+
                 traceback.print_exc()
             return
 
