@@ -10,8 +10,6 @@ from . import __version__
 from .core.docker_orchestrator import AgentOrchestrator
 from .core.localhost_orchestrator import LocalhostOrchestrator
 from .core.port_checker import PortChecker
-from .core.agent_context import AgentContextManager
-from .core.agent_remover import AgentRemover
 from .ui.manager import UIBuildManager
 from .shared.url_utils import localhost_urls
 
@@ -70,19 +68,6 @@ from .shared.url_utils import localhost_urls
     "--dry-run", is_flag=True, help="Show what would be done without executing"
 )
 @click.option(
-    "--remove",
-    "-r",
-    is_flag=True,
-    help="Remove all instances of agent from Docker",
-)
-@click.option(
-    "--yes-to-all",
-    "-y",
-    is_flag=True,
-    help="Skip confirmation prompts (use with --remove for non-interactive removal)",
-)
-@click.option("--list", is_flag=True, help="List all agents that can be removed")
-@click.option(
     "--no-ui",
     is_flag=True,
     help="Disable web UI landing page (default: UI enabled)",
@@ -132,9 +117,6 @@ def main(
     verbose: bool,
     version: bool,
     dry_run: bool,
-    remove: bool,
-    yes_to_all: bool,
-    list: bool,
     no_ui: bool,
     skip_a2a_test: bool,
     a2a_test_timeout: int,
@@ -216,151 +198,7 @@ def main(
             if verbose:
                 click.echo(f"🔌 No framework detected, using fallback port: {port}")
 
-    # Handle removal operations first
-    if remove or list:
-        click.echo("🚀 Any Agent Framework - Agent Removal")
-        click.echo(f"📂 Agent Path: {target_path}")
-
-        try:
-            remover = AgentRemover()
-            context_manager = AgentContextManager(target_path)
-
-            # Get agent name from context or use provided name
-            detected_agent_name = context_manager.get_agent_name()
-            final_agent_name = agent_name or detected_agent_name
-
-            if not final_agent_name:
-                # Try to extract from directory if no context or explicit name
-                try:
-                    temp_orchestrator = AgentOrchestrator()
-                    adapter = temp_orchestrator.detect_framework(target_path)
-                    if adapter:
-                        metadata = temp_orchestrator.extract_metadata(
-                            target_path, adapter
-                        )
-                        final_agent_name = metadata.name
-                except Exception:
-                    pass
-
-            if not final_agent_name:
-                click.echo(
-                    "❌ Could not determine agent name. Please use --agent-name to specify explicitly."
-                )
-                return
-
-            if list:
-                # List mode - show what can be removed
-                artifacts = remover.find_agent_artifacts(
-                    final_agent_name, context_manager
-                )
-                if not artifacts.has_artifacts:
-                    click.echo(f"No artifacts found for agent '{final_agent_name}'")
-                    return
-
-                click.echo(f"🔍 Found artifacts for '{final_agent_name}':")
-                summary = artifacts.summary
-                if summary["containers"]:
-                    click.echo(f"  🐳 Docker containers: {summary['containers']}")
-                if summary["images"]:
-                    click.echo(f"  📦 Docker images: {summary['images']}")
-                if summary["build_contexts"]:
-                    click.echo(f"  🗑️  Build contexts: {summary['build_contexts']}")
-
-                click.echo("\nTo remove this agent:")
-                click.echo(f"  python -m any_agent {target_path} --remove")
-                return
-
-            # Remove mode - confirm and remove
-            artifacts = remover.find_agent_artifacts(final_agent_name, context_manager)
-            if not artifacts.has_artifacts:
-                click.echo(f"No artifacts found for agent '{final_agent_name}'")
-                return
-
-            # Show what will be removed
-            click.echo(f"🔍 Agent: {final_agent_name}")
-            click.echo("Found artifacts to remove:")
-            summary = artifacts.summary
-            if summary["containers"]:
-                status_text = []
-                for container in artifacts.containers:
-                    status_text.append(f"{container['status']}")
-                click.echo(
-                    f"  🐳 Docker containers: {summary['containers']} ({', '.join(status_text)})"
-                )
-            if summary["images"]:
-                total_size = sum(img.get("size", 0) for img in artifacts.images)
-                size_gb = total_size / (1024**3) if total_size > 0 else 0
-                click.echo(f"  📦 Docker images: {summary['images']} ({size_gb:.2f}GB)")
-            if summary["build_contexts"]:
-                click.echo(f"  🗑️  Build contexts: {summary['build_contexts']}")
-
-            # Confirmation prompt (skip if --yes-to-all is used)
-            if not yes_to_all:
-                if not click.confirm(
-                    f"\n⚠️  This will permanently remove all traces of '{final_agent_name}'. Continue?"
-                ):
-                    click.echo("Removal cancelled.")
-                    return
-            else:
-                click.echo(
-                    f"\n⚠️  Removing all traces of '{final_agent_name}' (--yes-to-all specified)..."
-                )
-
-            # Perform removal
-            click.echo("\n🗑️  Removing agent artifacts...")
-            report = remover.remove_agent(
-                final_agent_name, context_manager, dry_run=dry_run
-            )
-
-            # Display results
-            if report.success:
-                click.echo("\n✅ Removal completed successfully!")
-                if report.containers_removed:
-                    click.echo(
-                        f"  🐳 Stopped and removed {report.containers_removed} container(s)"
-                    )
-                if report.images_removed:
-                    click.echo(f"  📦 Removed {report.images_removed} image(s)")
-                if report.build_contexts_removed:
-                    click.echo(
-                        f"  🗑️  Cleaned up {report.build_contexts_removed} build context(s)"
-                    )
-            else:
-                click.echo("\n⚠️  Removal completed with issues:")
-
-            # Show any errors or failures
-            if report.total_failed > 0:
-                click.echo(f"  ❌ Failed operations: {report.total_failed}")
-                if report.containers_failed:
-                    click.echo(f"    Containers: {report.containers_failed} failed")
-                if report.images_failed:
-                    click.echo(f"    Images: {report.images_failed} failed")
-                if report.build_contexts_failed:
-                    click.echo(
-                        f"    Build contexts: {report.build_contexts_failed} failed"
-                    )
-
-            if report.errors:
-                click.echo("\n❌ Errors encountered:")
-                for error in report.errors[:3]:  # Show first 3 errors
-                    click.echo(f"  • {error}")
-                if len(report.errors) > 3:
-                    click.echo(f"  • ... and {len(report.errors) - 3} more errors")
-
-            if report.warnings:
-                click.echo("\n⚠️  Warnings:")
-                for warning in report.warnings:
-                    click.echo(f"  • {warning}")
-
-            return
-
-        except Exception as e:
-            click.echo(f"\n💥 Removal failed with exception: {e}")
-            if verbose:
-                import traceback
-
-                traceback.print_exc()
-            return
+    # Removal/Helmsman functionality has been deprecated and removed
 
     # Pipeline divergence point - localhost vs Docker
     if localhost:
@@ -487,8 +325,6 @@ def main(
             port=port,
             build=not no_build,  # Default True, disabled by --no-build
             run=not no_run,  # Default True, disabled by --no-run
-            agent_id=agent_name,
-            environment="development",  # Could be made configurable
             add_ui=not no_ui,  # UI enabled by default, disabled with --no-ui
             skip_a2a_test=skip_a2a_test,
             a2a_test_timeout=a2a_test_timeout,

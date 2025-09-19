@@ -11,7 +11,6 @@ from typing import Any, Dict, Optional
 
 from ..adapters.base import BaseFrameworkAdapter, AgentMetadata, ValidationResult
 from ..docker.docker_generator import UnifiedDockerfileGenerator
-from ..api.helmsman_integration import HelsmanClient, create_helmsman_registration
 from .port_checker import PortChecker
 from .agent_context import AgentContextManager
 from .framework_detector import FrameworkDetector
@@ -540,80 +539,6 @@ class AgentOrchestrator:
 
         return results
 
-    def register_with_helmsman(
-        self,
-        metadata: AgentMetadata,
-        port: int,
-        agent_path: str,
-        helmsman_url: str = "http://localhost:7080",
-        agent_id: Optional[str] = None,
-        environment: str = "development",
-    ) -> Dict[str, Any]:
-        """
-        Register agent with Helmsman service.
-
-        Args:
-            metadata: Agent metadata
-            port: Port where agent is running
-            helmsman_url: Helmsman service URL
-            agent_id: Custom agent identifier
-            environment: Deployment environment
-
-        Returns:
-            Dict with registration results
-        """
-        logger.info("Step 8: Helmsman Registration")
-
-        try:
-            # Create Helmsman client
-            client = HelsmanClient(base_url=helmsman_url)
-
-            # Check if Helmsman is available
-            if not client.health_check():
-                raise RuntimeError(
-                    f"Helmsman service not available at {helmsman_url}. "
-                    f"Please verify:\n"
-                    f"  1. Helmsman is running and accessible\n"
-                    f"  2. Health endpoint responds: {helmsman_url}/api/health\n"
-                    f"  3. Network connectivity allows access to {helmsman_url}"
-                )
-
-            # Create registration
-            root_url = localhost_urls.base_url(port)
-            container_name = (
-                f"{metadata.name.lower().replace('_', '-').replace(' ', '-')}-agent"
-            )
-            docker_endpoint = f"http://{container_name}:{port}"
-
-            registration = create_helmsman_registration(
-                metadata=metadata,
-                root_url=root_url,
-                docker_endpoint=docker_endpoint,
-                agent_id=agent_id,
-                environment=environment,
-            )
-
-            # Register with Helmsman
-            response = client.register_agent(registration)
-
-            # Update context with Helmsman registration info
-            context_manager = AgentContextManager(Path(agent_path))
-            context_manager.update_build_info(
-                helmsman_agent_id=response.get("id"), helmsman_url=helmsman_url
-            )
-
-            return {
-                "success": True,
-                "agent_name": registration.name,
-                "helmsman_url": helmsman_url,
-                "root_url": root_url,
-                "registration_response": response,
-            }
-
-        except Exception as e:
-            logger.error(f"Helmsman registration failed: {e}")
-            return {"error": str(e), "helmsman_url": helmsman_url}
-
     def run_full_pipeline(
         self,
         agent_path: str,
@@ -621,10 +546,6 @@ class AgentOrchestrator:
         port: int = 8080,
         build: bool = True,
         run: bool = True,
-        helmsman_enabled: bool = False,
-        helmsman_url: str = "http://localhost:7080",
-        agent_id: Optional[str] = None,
-        environment: str = "development",
         add_ui: bool = False,
         skip_a2a_test: bool = False,
         a2a_test_timeout: int = 30,
@@ -728,7 +649,7 @@ class AgentOrchestrator:
                 framework=metadata.framework,
                 model=metadata.model,
                 port=port,
-                custom_agent_name=agent_id,  # Store CLI --agent-name override
+                # custom_agent_name parameter removed with Helmsman cleanup
             )
 
             # Step 4: Create Docker image (conditional)
@@ -820,53 +741,6 @@ class AgentOrchestrator:
                     "skipped": True,
                     "reason": "--no-run flag",
                 }
-
-            # Step 8: Helmsman registration (optional, requires running container)
-            if helmsman_enabled and run:
-                logger.info("Step 8: Helmsman Registration")
-                helmsman_result = self.register_with_helmsman(
-                    metadata=metadata,
-                    port=port,
-                    agent_path=agent_path,
-                    helmsman_url=helmsman_url,
-                    agent_id=agent_id,
-                    environment=environment,
-                )
-            elif helmsman_enabled and not run:
-                logger.info("Step 8: Skipping Helmsman Registration (requires --run)")
-                results["steps"]["helmsman_registration"] = {
-                    "success": True,
-                    "skipped": True,
-                    "reason": "Requires running container (--no-run was used)",
-                }
-                helmsman_result = None
-            else:
-                helmsman_result = None
-
-            if helmsman_result:
-                if "error" in helmsman_result:
-                    # Helmsman registration failed, but don't fail the entire pipeline
-                    results["steps"]["helmsman_registration"] = {
-                        "error": helmsman_result["error"],
-                        "helmsman_url": helmsman_result["helmsman_url"],
-                    }
-                    logger.warning(
-                        f"Helmsman registration failed, but pipeline continues: {helmsman_result['error']}"
-                    )
-                else:
-                    results["steps"]["helmsman_registration"] = {
-                        "success": True,
-                        "agent_name": helmsman_result["agent_name"],
-                        "helmsman_url": helmsman_result["helmsman_url"],
-                        "root_url": helmsman_result["root_url"],
-                    }
-
-                    # Update context with Helmsman info
-                    if "agent_id" in helmsman_result:
-                        context_manager.update_helmsman_info(
-                            helmsman_result["agent_id"], helmsman_result["helmsman_url"]
-                        )
-                    logger.info("Agent successfully registered with Helmsman")
 
             results["success"] = True
             logger.info("Full pipeline completed successfully!")

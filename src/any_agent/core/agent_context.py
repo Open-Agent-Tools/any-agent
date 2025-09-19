@@ -70,10 +70,6 @@ class AgentBuildContext:
     docker_instance: Optional[DockerInstanceInfo] = None
     localhost_server: Optional[LocalhostServerInfo] = None
 
-    # Helmsman integration
-    helmsman_agent_id: Optional[str] = None
-    helmsman_url: Optional[str] = None
-
     # Build artifacts
     build_context_path: Optional[str] = None
     dockerfile_path: Optional[str] = None
@@ -306,19 +302,6 @@ class AgentContextManager:
         self.save_context(context)
         return context
 
-    def update_helmsman_info(self, agent_id: str, helmsman_url: str):
-        """Update context with Helmsman registration information."""
-        context = self.load_context()
-        if not context:
-            logger.warning("No context found to update Helmsman info")
-            return
-
-        context.helmsman_agent_id = agent_id
-        context.helmsman_url = helmsman_url
-
-        self.save_context(context)
-        return context
-
     def mark_removed(self, removal_log: List[Dict[str, Any]]):
         """Mark agent as removed and log the removal details."""
         context = self.load_context()
@@ -356,10 +339,6 @@ class AgentContextManager:
         if context.localhost_server:
             artifacts["localhost_servers"] = [str(context.localhost_server.pid)]
 
-        # Helmsman artifacts
-        if context.helmsman_agent_id:
-            artifacts["helmsman_ids"] = [context.helmsman_agent_id]
-
         # Build artifacts
         if context.build_context_path:
             artifacts["build_contexts"] = [context.build_context_path]
@@ -390,6 +369,5 @@ class AgentContextManager:
             "removal_timestamp": context.removal_timestamp,
             "has_container": bool(context.container_name),
             "has_image": bool(context.image_name),
-            "has_helmsman": bool(context.helmsman_agent_id),
             "port": context.port,
         }
