@@ -103,6 +103,18 @@ from .shared.url_utils import localhost_urls
     is_flag=True,
     help="Disable file watching and hot reload in localhost mode",
 )
+@click.option(
+    "-r",
+    "--remove",
+    is_flag=True,
+    help="Remove all instances of agent from Docker",
+)
+@click.option(
+    "-y",
+    "--yes-to-all",
+    is_flag=True,
+    help="Skip confirmation prompts (use with --remove for non-interactive removal)",
+)
 def main(
     agent_path: Optional[Path],
     directory: Optional[Path],
@@ -124,6 +136,8 @@ def main(
     base_image: Optional[str],
     localhost: bool,
     no_hot_reload: bool,
+    remove: bool,
+    yes_to_all: bool,
 ) -> None:
     """Any Agent - Universal AI Agent Containerization Framework.
 
@@ -150,6 +164,93 @@ def main(
     if version:
         click.echo(f"any-agent {__version__}")
         return
+
+    # Handle removal operations first (before other validations)
+    if remove:
+        click.echo("🚀 Any Agent Framework - Agent Removal")
+        click.echo(f"📂 Agent Path: {agent_path}")
+
+        try:
+            from .core.agent_remover import AgentRemover
+            from .core.agent_context import AgentContextManager
+
+            remover = AgentRemover()
+            context_manager = AgentContextManager(agent_path) if agent_path else None
+
+            # Get agent name from context or use provided name
+            detected_agent_name = context_manager.get_agent_name() if context_manager else None
+            final_agent_name = agent_name or detected_agent_name
+
+            if not final_agent_name and agent_path:
+                # Try to extract from directory if no context or explicit name
+                try:
+                    temp_orchestrator = AgentOrchestrator()
+                    adapter = temp_orchestrator.detect_framework(agent_path)
+                    if adapter:
+                        metadata = temp_orchestrator.extract_metadata(agent_path, adapter)
+                        final_agent_name = metadata.name
+                except Exception:
+                    pass
+
+            if not final_agent_name and agent_path:
+                final_agent_name = agent_path.name
+
+            # Remove mode - confirm and remove
+            if not final_agent_name:
+                click.echo("❌ Could not determine agent name. Please use --agent-name to specify explicitly.")
+                return
+
+            artifacts = remover.find_agent_artifacts(final_agent_name, context_manager)
+            if not artifacts.has_artifacts:
+                click.echo(f"No artifacts found for agent '{final_agent_name}'")
+                return
+
+            # Show what will be removed
+            click.echo(f"🔍 Agent: {final_agent_name}")
+            click.echo("Found artifacts to remove:")
+            summary = artifacts.summary
+            if summary["containers"]:
+                status_text = []
+                for container in artifacts.containers:
+                    status_text.append(f"{container.get('status', 'unknown')}")
+                click.echo(f"  🐳 Docker containers: {summary['containers']} ({', '.join(status_text)})")
+            if summary["images"]:
+                total_size = sum(img.get("size", 0) for img in artifacts.images)
+                size_gb = total_size / (1024**3) if total_size > 0 else 0
+                click.echo(f"  📦 Docker images: {summary['images']} ({size_gb:.2f}GB)")
+            if summary["build_contexts"]:
+                click.echo(f"  🗑️  Build contexts: {summary['build_contexts']}")
+
+            # Confirmation prompt (skip if --yes-to-all is used)
+            if not yes_to_all:
+                if not click.confirm(f"\n⚠️  This will permanently remove all traces of '{final_agent_name}'. Continue?"):
+                    click.echo("Removal cancelled.")
+                    return
+
+            # Perform removal
+            click.echo("🗑️  Removing artifacts...")
+            report = remover.remove_agent(final_agent_name, context_manager, force=yes_to_all)
+
+            # Report results
+            if report.success:
+                click.echo(f"✅ Successfully removed agent '{final_agent_name}'")
+                if report.total_removed > 0:
+                    click.echo(f"   Removed {report.total_removed} artifacts")
+            else:
+                click.echo(f"❌ Removal completed with {report.total_failed} failures")
+
+            if report.errors:
+                for error in report.errors:
+                    click.echo(f"   Error: {error}")
+
+            return
+
+        except Exception as e:
+            click.echo(f"❌ Removal failed: {e}")
+            if verbose:
+                import traceback
+                traceback.print_exc()
+            return
 
     # Check if agent_path is required but not provided
     if agent_path is None:

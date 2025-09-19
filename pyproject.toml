@@ -59,6 +59,7 @@ dependencies = [
     "strands-agents>=1.6.0",
     "strands-agents-tools>=0.0.1",
     "anthropic>=0.64.0",
+    "basic-open-agent-tools>=0.10.4",
 ]
 
 [project.urls]
