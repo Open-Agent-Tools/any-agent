@@ -21,25 +21,35 @@ class UIBuildManager:
         possible_dev_dir = Path(os.getcwd()) / "src" / "any_agent" / "ui"
         if possible_dev_dir.exists() and (possible_dev_dir / "package.json").exists():
             self.ui_source_dir = possible_dev_dir
-            logger.debug(f"UIManager: Using development UI source at {self.ui_source_dir}")
+            logger.debug(
+                f"UIManager: Using development UI source at {self.ui_source_dir}"
+            )
         else:
             self.ui_source_dir = current_dir
-            logger.debug(f"UIManager: Using installed UI source at {self.ui_source_dir}")
+            logger.debug(
+                f"UIManager: Using installed UI source at {self.ui_source_dir}"
+            )
 
         self.dist_dir = self.ui_source_dir / "dist"
         self.package_json = self.ui_source_dir / "package.json"
 
-        logger.debug(f"UIManager: dist_dir={self.dist_dir}, package_json={self.package_json}")
+        logger.debug(
+            f"UIManager: dist_dir={self.dist_dir}, package_json={self.package_json}"
+        )
         logger.debug(f"UIManager: dist_dir exists={self.dist_dir.exists()}")
         if self.dist_dir.exists():
-            logger.debug(f"UIManager: dist_dir contents={list(self.dist_dir.iterdir())}")
+            logger.debug(
+                f"UIManager: dist_dir contents={list(self.dist_dir.iterdir())}"
+            )
 
     def is_ui_built(self) -> bool:
         """Check if UI is already built."""
         if not self.dist_dir.exists():
             # For PyPI installations, also check if dist directory exists but empty
             if self.is_pypi_installation():
-                logger.debug(f"PyPI installation - dist dir not found at {self.dist_dir}")
+                logger.debug(
+                    f"PyPI installation - dist dir not found at {self.dist_dir}"
+                )
                 return False
             return False
 
@@ -48,7 +58,9 @@ class UIBuildManager:
         for file_name in essential_files:
             if not (self.dist_dir / file_name).exists():
                 if self.is_pypi_installation():
-                    logger.warning(f"PyPI installation missing UI file: {file_name} at {self.dist_dir / file_name}")
+                    logger.warning(
+                        f"PyPI installation missing UI file: {file_name} at {self.dist_dir / file_name}"
+                    )
                 return False
 
         logger.debug(f"UI built check passed - found files at {self.dist_dir}")
@@ -219,7 +231,9 @@ class UIBuildManager:
 
     def copy_dist_to_context(self, build_context_path: Path) -> Dict[str, Any]:
         """Copy built UI files to Docker build context."""
-        logger.debug(f"Attempting to copy UI files from {self.dist_dir} to {build_context_path}")
+        logger.debug(
+            f"Attempting to copy UI files from {self.dist_dir} to {build_context_path}"
+        )
 
         if not self.is_ui_built():
             error_msg = f"UI not built - dist_dir={self.dist_dir}, exists={self.dist_dir.exists()}"
