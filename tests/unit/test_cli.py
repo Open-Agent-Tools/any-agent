@@ -107,18 +107,14 @@ def test_cli_verbose_mode():
         assert "DRY RUN" in result.output
 
 
-def test_cli_removal_list_mode():
-    """Test CLI removal list functionality."""
+def test_cli_version_flag():
+    """Test CLI version flag functionality."""
     runner = CliRunner()
 
-    with runner.isolated_filesystem():
-        os.makedirs("test_agent")
-        with open("test_agent/__init__.py", "w") as f:
-            f.write("# Test agent")
+    result = runner.invoke(main, ["--version"])
 
-        result = runner.invoke(main, ["test_agent", "--list"])
-
-        assert result.exit_code == 0
+    assert result.exit_code == 0
+    assert "0.2.9" in result.output
 
 
 def test_cli_protocol_specification():

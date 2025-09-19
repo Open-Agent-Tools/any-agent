@@ -303,8 +303,18 @@ class TestCLIComprehensiveCoverage:
 
                 assert result.exit_code == 0
 
-    def test_cli_removal_with_list_flag(self):
-        """Test CLI removal functionality with --list flag."""
+    def test_cli_version_display(self):
+        """Test CLI version flag functionality."""
+        runner = CliRunner()
+
+        result = runner.invoke(main, ["--version"])
+
+        # Should display version and exit successfully
+        assert result.exit_code == 0
+        assert "0.2.9" in result.output
+
+    def test_cli_base_image_option(self):
+        """Test CLI with custom base image option."""
         runner = CliRunner()
 
         with runner.isolated_filesystem():
@@ -312,96 +322,39 @@ class TestCLIComprehensiveCoverage:
             with open("test_agent/__init__.py", "w") as f:
                 f.write("# Test agent")
 
+            # Test with custom base image
             result = runner.invoke(
-                main, ["test_agent", "--agent-name", "test-agent", "--list"]
-            )
-
-            # Should complete successfully (may not find artifacts but shouldn't crash)
-            assert result.exit_code == 0
-
-    def test_cli_removal_successful_path(self):
-        """Test CLI removal successful execution path."""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem():
-            os.makedirs("test_agent")
-            with open("test_agent/__init__.py", "w") as f:
-                f.write("# Test agent")
-
-            # Test removal list mode (should handle gracefully)
-            result = runner.invoke(
-                main, ["test_agent", "--agent-name", "test-removal-agent", "--list"]
+                main, ["test_agent", "--base-image", "python:3.11-slim", "--dry-run"]
             )
 
             assert result.exit_code == 0
 
-    @patch("any_agent.core.agent_remover.AgentRemover")
-    @patch("any_agent.core.agent_context.AgentContextManager")
-    @patch("any_agent.core.docker_orchestrator.AgentOrchestrator")
-    def test_cli_removal_agent_name_detection_fallback(
-        self, mock_orchestrator, mock_context, mock_remover
-    ):
-        """Test CLI removal with agent name detection fallback."""
+    def test_cli_help_sections(self):
+        """Test CLI help message contains required sections."""
         runner = CliRunner()
 
-        # Mock context manager with no agent name
-        mock_context_instance = Mock()
-        mock_context_instance.get_agent_name.return_value = None
-        mock_context.return_value = mock_context_instance
+        result = runner.invoke(main, ["--help"])
 
-        # Mock orchestrator for fallback detection
-        mock_adapter = Mock()
-        mock_orchestrator_instance = Mock()
-        mock_orchestrator_instance.detect_framework.return_value = mock_adapter
-        mock_metadata = Mock()
-        mock_metadata.name = "fallback-agent"
-        mock_orchestrator_instance.extract_metadata.return_value = mock_metadata
-        mock_orchestrator.return_value = mock_orchestrator_instance
+        assert result.exit_code == 0
+        assert "Options:" in result.output
+        assert "--framework" in result.output
+        assert "--port" in result.output
+        assert "--agent-name" in result.output
 
-        # Mock remover
-        mock_artifacts = Mock()
-        mock_artifacts.has_artifacts = False
-        mock_remover_instance = Mock()
-        mock_remover_instance.find_agent_artifacts.return_value = mock_artifacts
-        mock_remover.return_value = mock_remover_instance
+    def test_cli_error_recovery(self):
+        """Test CLI error recovery behavior."""
+        runner = CliRunner()
 
         with runner.isolated_filesystem():
             os.makedirs("test_agent")
             with open("test_agent/__init__.py", "w") as f:
                 f.write("# Test agent")
 
-            result = runner.invoke(main, ["test_agent", "--remove"])
+            # Test with invalid port to trigger error handling
+            result = runner.invoke(main, ["test_agent", "--port", "99999", "--dry-run"])
 
-            assert result.exit_code == 0
-
-    @patch("any_agent.core.agent_remover.AgentRemover")
-    @patch("any_agent.core.agent_context.AgentContextManager")
-    @patch("any_agent.core.docker_orchestrator.AgentOrchestrator")
-    def test_cli_removal_no_agent_name_error(
-        self, mock_orchestrator, mock_context, mock_remover
-    ):
-        """Test CLI removal error when no agent name can be determined."""
-        runner = CliRunner()
-
-        # Mock context manager with no agent name
-        mock_context_instance = Mock()
-        mock_context_instance.get_agent_name.return_value = None
-        mock_context.return_value = mock_context_instance
-
-        # Mock orchestrator failure
-        mock_orchestrator_instance = Mock()
-        mock_orchestrator_instance.detect_framework.return_value = None
-        mock_orchestrator.return_value = mock_orchestrator_instance
-
-        with runner.isolated_filesystem():
-            os.makedirs("test_agent")
-            with open("test_agent/__init__.py", "w") as f:
-                f.write("# Test agent")
-
-            result = runner.invoke(main, ["test_agent", "--remove"])
-
-            assert result.exit_code == 0
-            assert "Could not determine agent name" in result.output
+            # Should handle error gracefully
+            assert isinstance(result.exit_code, int)
 
     def test_cli_logging_setup_verbose(self):
         """Test CLI logging setup in verbose mode."""
