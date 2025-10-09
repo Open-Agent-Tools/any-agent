@@ -3,46 +3,50 @@ name: Publish to PyPI
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      test_pypi:
+        description: 'Publish to Test PyPI instead of PyPI'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   publish:
-    name: Publish to PyPI
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/any-agent-wrapper
     permissions:
-      id-token: write
-
+      id-token: write  # Required for trusted publishing
+      contents: read
+    
     steps:
     - uses: actions/checkout@v4
-
+    
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: "3.11"
-
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: "18"
-        cache: "npm"
-        cache-dependency-path: "src/any_agent/ui/package-lock.json"
-
-    - name: Build UI assets
+        python-version: '3.11'
+    
+    - name: Install build dependencies
       run: |
-        cd src/any_agent/ui
-        npm ci
-        npm run build
-
+        python -m pip install --upgrade pip
+        python -m pip install build hatch
+    
+    - name: Clean build artifacts
+      run: |
+        rm -rf dist/ build/ *.egg-info/
+        find . -name "*.pyc" -delete
+        find . -name "__pycache__" -type d -exec rm -rf {} + || true
+    
     - name: Build package
-      run: |
-        uv build
-
-    - name: Publish to PyPI
+      run: python -m build
+    
+    - name: Publish to Test PyPI
+      if: github.event.inputs.test_pypi == 'true'
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
+        repository-url: https://test.pypi.org/legacy/
         skip-existing: true
+    
+    - name: Publish to PyPI
+      if: github.event.inputs.test_pypi != 'true'
+      uses: pypa/gh-action-pypi-publish@release/v1
