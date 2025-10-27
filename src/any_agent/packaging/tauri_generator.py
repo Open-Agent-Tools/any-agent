@@ -136,7 +136,7 @@ if (isTauriEnvironment()) {
   }).catch(error => {
     console.error('Failed to discover backend port:', error);
   });
-}"""
+}""",
         )
 
         # Write modified content
@@ -170,7 +170,11 @@ if (isTauriEnvironment()) {
                         "exists": True,
                         "scope": ["$APPDATA/*", "$HOME/Library/Application Support/*"],
                     },
-                    "http": {"all": False, "request": True, "scope": ["http://localhost:*"]},
+                    "http": {
+                        "all": False,
+                        "request": True,
+                        "scope": ["http://localhost:*"],
+                    },
                 },
                 "bundle": {
                     "active": True,
@@ -217,11 +221,9 @@ if (isTauriEnvironment()) {
         with open(config_path, "w") as f:
             json.dump(config, f, indent=2)
 
-    def _generate_rust_main(
-        self, tauri_path: Path, metadata: Dict[str, str]
-    ) -> None:
+    def _generate_rust_main(self, tauri_path: Path, metadata: Dict[str, str]) -> None:
         """Generate Rust main.rs file."""
-        main_rs = '''// Prevents additional console window on Windows in release
+        main_rs = """// Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::process::{Command, Stdio};
@@ -276,21 +278,19 @@ fn main() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-'''
+"""
 
         main_rs_path = tauri_path / "src-tauri" / "src" / "main.rs"
         with open(main_rs_path, "w") as f:
             f.write(main_rs)
 
-    def _generate_cargo_toml(
-        self, tauri_path: Path, metadata: Dict[str, str]
-    ) -> None:
+    def _generate_cargo_toml(self, tauri_path: Path, metadata: Dict[str, str]) -> None:
         """Generate Cargo.toml for Rust project."""
         cargo_toml = f'''[package]
-name = "{metadata['app_name'].lower().replace(' ', '-')}"
-version = "{metadata['version']}"
-description = "{metadata['description']}"
-authors = ["{metadata['author']}"]
+name = "{metadata["app_name"].lower().replace(" ", "-")}"
+version = "{metadata["version"]}"
+description = "{metadata["description"]}"
+authors = ["{metadata["author"]}"]
 license = ""
 repository = ""
 edition = "2021"
@@ -315,10 +315,10 @@ custom-protocol = ["tauri/custom-protocol"]
             f.write(cargo_toml)
 
         # Also create build.rs
-        build_rs = '''fn main() {
+        build_rs = """fn main() {
     tauri_build::build()
 }
-'''
+"""
         build_rs_path = tauri_path / "src-tauri" / "build.rs"
         with open(build_rs_path, "w") as f:
             f.write(build_rs)
@@ -362,7 +362,7 @@ custom-protocol = ["tauri/custom-protocol"]
 
     def _generate_build_script(self, tauri_path: Path) -> None:
         """Generate shell script for building the app."""
-        build_script = '''#!/bin/bash
+        build_script = """#!/bin/bash
 set -e
 
 echo "🔨 Building Tauri application..."
@@ -376,7 +376,7 @@ echo "🏗️  Building..."
 npm run tauri:build
 
 echo "✅ Build complete!"
-'''
+"""
 
         script_path = tauri_path / "build.sh"
         with open(script_path, "w") as f:

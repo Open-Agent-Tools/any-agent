@@ -4,7 +4,7 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List
 
 import click
 
@@ -43,7 +43,7 @@ class MacAppPackager:
             any_agent_dir = agent_path / ".any_agent"
             if any_agent_dir.exists():
                 rebuild = click.confirm(
-                    f"\n.any_agent directory already exists. Rebuild from scratch?",
+                    "\n.any_agent directory already exists. Rebuild from scratch?",
                     default=True,
                 )
                 if rebuild:
@@ -117,7 +117,7 @@ class MacAppPackager:
             "cargo": {"cmd": ["cargo", "--version"], "name": "Cargo"},
         }
 
-        missing = []
+        missing: List[str] = []
         for key, prereq in prerequisites.items():
             try:
                 subprocess.run(
@@ -127,7 +127,7 @@ class MacAppPackager:
                     check=True,
                 )
             except (subprocess.CalledProcessError, FileNotFoundError):
-                missing.append(prereq["name"])
+                missing.append(str(prereq["name"]))
 
         if missing:
             error_msg = f"Missing prerequisites: {', '.join(missing)}"
@@ -138,9 +138,12 @@ class MacAppPackager:
                 "Cargo": "Comes with Rust installation",
             }
 
-            recommendation = "\n".join(
-                [f"  • {name}: {rec}" for name, rec in recommendations.items() if name in missing]
-            )
+            recommendation_items = [
+                f"  • {name}: {rec}"
+                for name, rec in recommendations.items()
+                if name in missing
+            ]
+            recommendation = "\n".join(recommendation_items)
 
             return {
                 "success": False,
@@ -215,10 +218,14 @@ class MacAppPackager:
         click.echo("Desktop Application Configuration")
         click.echo("=" * 50)
 
-        app_name = click.prompt("\n📱 Application name", default=agent_path.name.replace("_", " ").title())
+        app_name = click.prompt(
+            "\n📱 Application name", default=agent_path.name.replace("_", " ").title()
+        )
         version = click.prompt("🔢 Version", default="1.0.0")
         author = click.prompt("👤 Author name", default="")
-        description = click.prompt("📝 Description", default=f"AI agent powered by {agent_path.name}")
+        description = click.prompt(
+            "📝 Description", default=f"AI agent powered by {agent_path.name}"
+        )
 
         # Icon path (optional)
         icon_path = click.prompt(
@@ -565,7 +572,9 @@ if __name__ == "__main__":
                 }
 
             if verbose:
-                click.echo("  Building Tauri application (this may take several minutes)...")
+                click.echo(
+                    "  Building Tauri application (this may take several minutes)..."
+                )
 
             # Run tauri build
             result = subprocess.run(

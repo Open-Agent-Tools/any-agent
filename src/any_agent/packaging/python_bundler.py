@@ -1,6 +1,5 @@
 """Python runtime and dependency bundler for desktop packaging."""
 
-import platform
 import shutil
 import subprocess
 import sys
