@@ -79,6 +79,16 @@ class TauriProjectGenerator:
         if ui_src.exists():
             shutil.copytree(ui_src, src_dest, dirs_exist_ok=True)
 
+        # Copy Tauri API adapter
+        adapter_source = Path(__file__).parent / "tauri_api_adapter.ts"
+        if adapter_source.exists():
+            adapter_dest = tauri_path / "src" / "utils" / "tauri_api_adapter.ts"
+            adapter_dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(adapter_source, adapter_dest)
+
+            # Modify api.ts to use dynamic port
+            self._modify_api_for_tauri(tauri_path)
+
         # Copy index.html
         index_html = self.ui_source_path / "index.html"
         if index_html.exists():
@@ -99,6 +109,39 @@ class TauriProjectGenerator:
         index_css = self.ui_source_path / "src" / "index.css"
         if index_css.exists():
             shutil.copy(index_css, tauri_path / "src" / "index.css")
+
+    def _modify_api_for_tauri(self, tauri_path: Path) -> None:
+        """Modify api.ts to use Tauri backend port discovery."""
+        api_file = tauri_path / "src" / "utils" / "api.ts"
+
+        if not api_file.exists():
+            return
+
+        # Read original api.ts
+        with open(api_file, "r") as f:
+            content = f.read()
+
+        # Replace API_BASE_URL with dynamic version
+        modified_content = content.replace(
+            "const API_BASE_URL = '';",
+            """import { getBackendURL, isTauriEnvironment, initializeTauriBackend } from './tauri_api_adapter';
+
+let API_BASE_URL = '';
+
+// Initialize backend URL discovery for Tauri
+if (isTauriEnvironment()) {
+  initializeTauriBackend().then(port => {
+    API_BASE_URL = `http://localhost:${port}`;
+    console.log('Tauri backend port discovered:', port);
+  }).catch(error => {
+    console.error('Failed to discover backend port:', error);
+  });
+}"""
+        )
+
+        # Write modified content
+        with open(api_file, "w") as f:
+            f.write(modified_content)
 
     def _generate_tauri_config(
         self, tauri_path: Path, metadata: Dict[str, str]
