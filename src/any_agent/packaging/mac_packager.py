@@ -292,6 +292,8 @@ class MacAppPackager:
         Returns:
             Dict with success status and tauri project path
         """
+        from .tauri_generator import TauriProjectGenerator
+
         # Create .any_agent/tauri-app directory
         tauri_path = agent_path / ".any_agent" / "tauri-app"
         tauri_path.mkdir(parents=True, exist_ok=True)
@@ -301,8 +303,12 @@ class MacAppPackager:
         with open(manifest_path, "w") as f:
             json.dump(metadata, f, indent=2)
 
-        # TODO: Implement Tauri project generation
-        # This is a placeholder - will be implemented in next steps
+        # Generate Tauri project
+        generator = TauriProjectGenerator()
+        result = generator.generate_project(tauri_path, metadata, agent_path)
+
+        if not result["success"]:
+            return result
 
         return {
             "success": True,
