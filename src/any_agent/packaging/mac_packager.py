@@ -496,13 +496,45 @@ if __name__ == "__main__":
         Returns:
             Dict with success status and app path
         """
-        # TODO: Implement test mode
-        # This is a placeholder - will be implemented in next steps
+        try:
+            if verbose:
+                click.echo("  Installing npm dependencies...")
 
-        return {
-            "success": True,
-            "app_path": str(tauri_path),
-        }
+            # Install npm dependencies
+            result = subprocess.run(
+                ["npm", "install"],
+                cwd=tauri_path,
+                capture_output=not verbose,
+                text=True,
+            )
+            if result.returncode != 0:
+                return {
+                    "success": False,
+                    "error": f"npm install failed: {result.stderr if not verbose else ''}",
+                }
+
+            if verbose:
+                click.echo("  Starting Tauri development server...")
+
+            # Run tauri dev
+            click.echo("\n🚀 Launching packaged app in development mode...")
+            click.echo("   Press Ctrl+C to stop\n")
+
+            subprocess.run(
+                ["npm", "run", "tauri:dev"],
+                cwd=tauri_path,
+            )
+
+            return {
+                "success": True,
+                "app_path": str(tauri_path),
+            }
+
+        except KeyboardInterrupt:
+            click.echo("\n\n⏹️  Stopped by user")
+            return {"success": True, "app_path": str(tauri_path)}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     def _build_package(self, tauri_path: Path, verbose: bool) -> Dict[str, Any]:
         """
@@ -515,10 +547,69 @@ if __name__ == "__main__":
         Returns:
             Dict with success status and dmg path
         """
-        # TODO: Implement full build
-        # This is a placeholder - will be implemented in next steps
+        try:
+            if verbose:
+                click.echo("  Installing npm dependencies...")
 
-        return {
-            "success": True,
-            "dmg_path": str(tauri_path / "target" / "release" / "bundle" / "dmg"),
-        }
+            # Install npm dependencies
+            result = subprocess.run(
+                ["npm", "install"],
+                cwd=tauri_path,
+                capture_output=not verbose,
+                text=True,
+            )
+            if result.returncode != 0:
+                return {
+                    "success": False,
+                    "error": f"npm install failed: {result.stderr if not verbose else ''}",
+                }
+
+            if verbose:
+                click.echo("  Building Tauri application (this may take several minutes)...")
+
+            # Run tauri build
+            result = subprocess.run(
+                ["npm", "run", "tauri:build"],
+                cwd=tauri_path,
+                capture_output=not verbose,
+                text=True,
+            )
+            if result.returncode != 0:
+                return {
+                    "success": False,
+                    "error": f"Tauri build failed: {result.stderr if not verbose else ''}",
+                }
+
+            # Find the generated DMG
+            bundle_dir = tauri_path / "src-tauri" / "target" / "release" / "bundle"
+            dmg_dir = bundle_dir / "dmg"
+
+            if not dmg_dir.exists():
+                return {
+                    "success": False,
+                    "error": "DMG directory not found after build",
+                }
+
+            dmg_files = list(dmg_dir.glob("*.dmg"))
+            if not dmg_files:
+                return {
+                    "success": False,
+                    "error": "No DMG file found after build",
+                }
+
+            dmg_file = dmg_files[0]
+
+            # Copy DMG to .any_agent/dist/
+            dist_dir = tauri_path.parent / "dist"
+            dist_dir.mkdir(exist_ok=True)
+
+            final_dmg = dist_dir / dmg_file.name
+            shutil.copy(dmg_file, final_dmg)
+
+            return {
+                "success": True,
+                "dmg_path": str(final_dmg),
+            }
+
+        except Exception as e:
+            return {"success": False, "error": str(e)}
