@@ -76,7 +76,7 @@ class MacAppPackager:
             if verbose:
                 click.echo("\n🐍 Bundling Python runtime and dependencies...")
             python_result = self._bundle_python_runtime(
-                agent_path, tauri_result["tauri_path"]
+                agent_path, tauri_result["tauri_path"], verbose
             )
             if not python_result["success"]:
                 return python_result
@@ -316,7 +316,7 @@ class MacAppPackager:
         }
 
     def _bundle_python_runtime(
-        self, agent_path: Path, tauri_path: Path
+        self, agent_path: Path, tauri_path: Path, verbose: bool = False
     ) -> Dict[str, Any]:
         """
         Bundle Python runtime and dependencies.
@@ -324,14 +324,15 @@ class MacAppPackager:
         Args:
             agent_path: Path to the agent directory
             tauri_path: Path to the Tauri project
+            verbose: Enable verbose logging
 
         Returns:
             Dict with success status
         """
-        # TODO: Implement Python runtime bundling
-        # This is a placeholder - will be implemented in next steps
+        from .python_bundler import PythonBundler
 
-        return {"success": True}
+        bundler = PythonBundler()
+        return bundler.bundle_runtime(agent_path, tauri_path, verbose)
 
     def _generate_entrypoint(
         self,
@@ -350,10 +351,139 @@ class MacAppPackager:
         Returns:
             Dict with success status
         """
-        # TODO: Implement entrypoint generation
-        # This is a placeholder - will be implemented in next steps
+        try:
+            framework_name = framework_result["framework_name"]
+            adapter_class = framework_result["adapter"].__class__.__name__
 
-        return {"success": True}
+            # Determine adapter module based on framework
+            adapter_module_map = {
+                "GoogleADK": "any_agent.adapters.google_adk_adapter",
+                "AWSStrands": "any_agent.adapters.aws_strands_adapter",
+                "LangChain": "any_agent.adapters.langchain_adapter",
+                "CrewAI": "any_agent.adapters.crewai_adapter",
+                "LangGraph": "any_agent.adapters.langgraph_adapter",
+            }
+
+            adapter_module = adapter_module_map.get(
+                adapter_class, "any_agent.adapters.base"
+            )
+
+            # Generate entrypoint script
+            entrypoint_script = f'''#!/usr/bin/env python3
+"""
+Auto-generated entrypoint for {framework_name} agent.
+This script is launched by Tauri as a sidecar process.
+"""
+
+import os
+import sys
+import json
+import socket
+from pathlib import Path
+
+
+def find_free_port() -> int:
+    """Find an available port for the agent server."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))
+        s.listen(1)
+        port = s.getsockname()[1]
+    return port
+
+
+def load_config() -> dict:
+    """Load configuration from user's Application Support directory."""
+    if sys.platform == "darwin":
+        config_dir = Path.home() / "Library" / "Application Support" / "AnyAgent"
+    elif sys.platform == "win32":
+        config_dir = Path(os.getenv("APPDATA", "")) / "AnyAgent"
+    else:
+        config_dir = Path.home() / ".config" / "anyagent"
+
+    config_file = config_dir / "config.json"
+
+    if not config_file.exists():
+        # Create template config
+        config_dir.mkdir(parents=True, exist_ok=True)
+        template_config = {{
+            "GOOGLE_API_KEY": "your-google-api-key-here",
+            "ANTHROPIC_API_KEY": "your-anthropic-api-key-here",
+            "OPENAI_API_KEY": "your-openai-api-key-here",
+            "AWS_REGION": "us-west-2",
+            "GOOGLE_MODEL": "gemini-pro",
+        }}
+        with open(config_file, "w") as f:
+            json.dump(template_config, f, indent=2)
+
+    # Load and apply config
+    if config_file.exists():
+        with open(config_file, "r") as f:
+            config = json.load(f)
+            for key, value in config.items():
+                if value and not value.startswith("your-"):
+                    os.environ[key] = value
+
+    return config if config_file.exists() else {{}}
+
+
+def main():
+    """Main entrypoint for the packaged agent."""
+    # Set up paths
+    bundle_root = Path(__file__).parent
+    agent_path = bundle_root / "agent"
+
+    # Add to Python path
+    sys.path.insert(0, str(bundle_root))
+    sys.path.insert(0, str(agent_path))
+
+    # Load configuration
+    config = load_config()
+
+    # Find available port
+    port = find_free_port()
+
+    # Communicate port to Tauri via stdout (for IPC)
+    print(json.dumps({{"port": port, "status": "ready"}}), flush=True)
+
+    # Also set as environment variable (fallback)
+    os.environ["AGENT_PORT"] = str(port)
+
+    # Import and start the adapter
+    try:
+        from {adapter_module} import {adapter_class}
+
+        adapter = {adapter_class}(agent_path=agent_path)
+
+        # Start the server
+        print(f"Starting {{framework_name}} agent on port {{port}}...", file=sys.stderr)
+        adapter.run(port=port)
+
+    except ImportError as e:
+        print(f"Error importing adapter: {{e}}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error starting agent: {{e}}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+            # Write entrypoint script
+            runtime_dir = tauri_path / "src-tauri" / "resources" / "python-runtime"
+            entrypoint_path = runtime_dir / "run_agent.py"
+
+            with open(entrypoint_path, "w") as f:
+                f.write(entrypoint_script)
+
+            # Make executable
+            entrypoint_path.chmod(0o755)
+
+            return {"success": True, "entrypoint_path": str(entrypoint_path)}
+
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     def _test_package(self, tauri_path: Path, verbose: bool) -> Dict[str, Any]:
         """
