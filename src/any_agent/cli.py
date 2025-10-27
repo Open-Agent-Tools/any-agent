@@ -115,6 +115,16 @@ from .shared.url_utils import localhost_urls
     is_flag=True,
     help="Skip confirmation prompts (use with --remove for non-interactive removal)",
 )
+@click.option(
+    "--package-mac",
+    is_flag=True,
+    help="Create macOS desktop application bundle (.dmg installer)",
+)
+@click.option(
+    "--test",
+    is_flag=True,
+    help="Test packaged app locally without creating installer (use with --package-mac)",
+)
 def main(
     agent_path: Optional[Path],
     directory: Optional[Path],
@@ -138,6 +148,8 @@ def main(
     no_hot_reload: bool,
     remove: bool,
     yes_to_all: bool,
+    package_mac: bool,
+    test: bool,
 ) -> None:
     """Any Agent - Universal AI Agent Containerization Framework.
 
@@ -163,6 +175,49 @@ def main(
     # Handle version flag first
     if version:
         click.echo(f"any-agent {__version__}")
+        return
+
+    # Handle packaging operations (before other validations)
+    if package_mac:
+        click.echo("📦 Any Agent Framework - Desktop Packaging")
+        click.echo(f"📂 Agent Path: {agent_path}")
+
+        # Validate agent_path is provided
+        if agent_path is None:
+            click.echo("Error: Missing argument 'AGENT_PATH' for packaging.")
+            raise click.Abort()
+
+        if not agent_path.exists():
+            click.echo(f"Error: Path '{agent_path}' does not exist.")
+            raise click.Abort()
+
+        try:
+            from .packaging.mac_packager import MacAppPackager
+
+            packager = MacAppPackager()
+            result = packager.package(
+                agent_path=agent_path,
+                test_mode=test,
+                verbose=verbose,
+            )
+
+            if result["success"]:
+                click.echo("\n✅ Packaging completed successfully!")
+                if test:
+                    click.echo(f"🧪 Test app launched at: {result.get('app_path', 'N/A')}")
+                else:
+                    click.echo(f"📦 Installer created at: {result.get('dmg_path', 'N/A')}")
+            else:
+                click.echo(f"\n❌ Packaging failed: {result.get('error', 'Unknown error')}")
+
+        except ImportError:
+            click.echo("❌ Packaging module not available. This feature may not be implemented yet.")
+        except Exception as e:
+            click.echo(f"❌ Packaging failed: {e}")
+            if verbose:
+                import traceback
+                traceback.print_exc()
+
         return
 
     # Handle removal operations first (before other validations)
