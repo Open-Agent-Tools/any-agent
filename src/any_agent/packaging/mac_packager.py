@@ -1,8 +1,10 @@
 """macOS desktop application packager using Tauri."""
 
 import json
+import os
 import shutil
 import subprocess
+import time
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -15,6 +17,12 @@ class MacAppPackager:
     def __init__(self) -> None:
         """Initialize the MacAppPackager."""
         self.default_icon_path = None  # Will be set to generic icon path
+
+        # Set up environment with Cargo bin path
+        self.env = os.environ.copy()
+        cargo_bin = Path.home() / ".cargo" / "bin"
+        if cargo_bin.exists():
+            self.env["PATH"] = f"{cargo_bin}:{self.env.get('PATH', '')}"
 
     def package(
         self,
@@ -39,22 +47,25 @@ class MacAppPackager:
             if not prereq_result["success"]:
                 return prereq_result
 
-            # 2. Check for existing build and prompt
+            # 2. Preserve manifest if it exists, then rebuild from scratch
             any_agent_dir = agent_path / ".any_agent"
-            if any_agent_dir.exists():
-                rebuild = click.confirm(
-                    "\n.any_agent directory already exists. Rebuild from scratch?",
-                    default=True,
-                )
-                if rebuild:
-                    if verbose:
-                        click.echo("🗑️  Removing existing .any_agent directory...")
-                    shutil.rmtree(any_agent_dir)
+            saved_manifest = None
+            manifest_path = any_agent_dir / "package-manifest.json"
 
-            # 3. Collect metadata interactively
+            if manifest_path.exists():
+                # Save the manifest before deleting
+                with open(manifest_path, "r") as f:
+                    saved_manifest = json.load(f)
+
+            if any_agent_dir.exists():
+                if verbose:
+                    click.echo("🗑️  Removing existing .any_agent directory...")
+                self._remove_directory_with_retry(any_agent_dir, verbose)
+
+            # 3. Collect metadata (use saved manifest if available)
             if verbose:
                 click.echo("\n📝 Collecting application metadata...")
-            metadata = self._collect_metadata(agent_path)
+            metadata = self._collect_metadata(agent_path, saved_manifest)
 
             # 4. Detect framework
             if verbose:
@@ -125,6 +136,7 @@ class MacAppPackager:
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     check=True,
+                    env=self.env,
                 )
             except (subprocess.CalledProcessError, FileNotFoundError):
                 missing.append(str(prereq["name"]))
@@ -159,6 +171,7 @@ class MacAppPackager:
                 stderr=subprocess.PIPE,
                 text=True,
                 check=True,
+                env=self.env,
             )
             if "tauri-cli" not in result.stdout:
                 return {
@@ -190,28 +203,58 @@ class MacAppPackager:
 
         return {"success": True}
 
-    def _collect_metadata(self, agent_path: Path) -> Dict[str, str]:
+    def _remove_directory_with_retry(
+        self, directory: Path, verbose: bool, max_attempts: int = 3
+    ) -> None:
+        """
+        Remove a directory with retry logic for locked files.
+
+        Args:
+            directory: Path to directory to remove
+            verbose: Whether to show verbose output
+            max_attempts: Maximum number of attempts
+
+        Raises:
+            OSError: If directory cannot be removed after all attempts
+        """
+        for attempt in range(max_attempts):
+            try:
+                shutil.rmtree(directory)
+                return
+            except OSError as os_error:
+                if attempt < max_attempts - 1:
+                    if verbose:
+                        click.echo(
+                            f"   Retry {attempt + 1}/{max_attempts - 1}: "
+                            f"Directory in use, waiting..."
+                        )
+                    time.sleep(1)
+                else:
+                    raise OSError(
+                        f"Failed to remove directory after {max_attempts} attempts: "
+                        f"{os_error}"
+                    ) from os_error
+
+    def _collect_metadata(
+        self, agent_path: Path, saved_manifest: Dict[str, str] | None = None
+    ) -> Dict[str, str]:
         """
         Collect application metadata interactively.
 
         Args:
             agent_path: Path to the agent directory
+            saved_manifest: Previously saved manifest (if rebuilding)
 
         Returns:
             Dict with collected metadata
         """
-        # Check for existing manifest
-        manifest_path = agent_path / ".any_agent" / "package-manifest.json"
-        if manifest_path.exists():
-            with open(manifest_path, "r") as f:
-                existing = json.load(f)
-            click.echo("\nFound existing package manifest:")
-            for key, value in existing.items():
+        # Use saved manifest if available
+        if saved_manifest:
+            click.echo("\n📋 Using existing package manifest:")
+            for key, value in saved_manifest.items():
                 if key != "timestamp":
                     click.echo(f"  {key}: {value}")
-
-            if click.confirm("\nUse these values?", default=True):
-                return existing
+            return saved_manifest
 
         # Prompt for metadata
         click.echo("\n" + "=" * 50)
@@ -513,6 +556,7 @@ if __name__ == "__main__":
                 cwd=tauri_path,
                 capture_output=not verbose,
                 text=True,
+                env=self.env,
             )
             if result.returncode != 0:
                 return {
@@ -530,6 +574,7 @@ if __name__ == "__main__":
             subprocess.run(
                 ["npm", "run", "tauri:dev"],
                 cwd=tauri_path,
+                env=self.env,
             )
 
             return {
@@ -564,6 +609,7 @@ if __name__ == "__main__":
                 cwd=tauri_path,
                 capture_output=not verbose,
                 text=True,
+                env=self.env,
             )
             if result.returncode != 0:
                 return {
@@ -576,12 +622,26 @@ if __name__ == "__main__":
                     "  Building Tauri application (this may take several minutes)..."
                 )
 
+            # Clean cargo cache to avoid race conditions
+            cargo_clean_result = subprocess.run(
+                ["cargo", "clean"],
+                cwd=tauri_path / "src-tauri",
+                capture_output=True,
+                text=True,
+                env=self.env,
+            )
+
+            # Force single-threaded compilation to avoid file system race conditions
+            build_env = self.env.copy()
+            build_env["CARGO_BUILD_JOBS"] = "1"
+
             # Run tauri build
             result = subprocess.run(
                 ["npm", "run", "tauri:build"],
                 cwd=tauri_path,
                 capture_output=not verbose,
                 text=True,
+                env=build_env,
             )
             if result.returncode != 0:
                 return {

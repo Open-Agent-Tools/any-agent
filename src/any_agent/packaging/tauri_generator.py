@@ -35,6 +35,16 @@ class TauriProjectGenerator:
             # Create directory structure
             self._create_directory_structure(tauri_path)
 
+            # Create placeholder in resources directory
+            # This ensures the resources/* glob pattern matches during build
+            resources_dir = tauri_path / "src-tauri" / "resources"
+            placeholder = resources_dir / ".gitkeep"
+            placeholder.touch()
+
+            # Create default icon if none provided
+            if not metadata.get("icon_path") or metadata["icon_path"] == "default":
+                self._create_default_icon(tauri_path)
+
             # Copy React UI source
             self._copy_ui_source(tauri_path)
 
@@ -72,11 +82,65 @@ class TauriProjectGenerator:
             tauri_path / "src-tauri",
             tauri_path / "src-tauri" / "src",
             tauri_path / "src-tauri" / "icons",
+            tauri_path / "src-tauri" / "resources",
             tauri_path / "public",
         ]
 
         for directory in directories:
             directory.mkdir(parents=True, exist_ok=True)
+
+    def _create_default_icon(self, tauri_path: Path) -> None:
+        """Create a minimal default icon for Tauri."""
+        import zlib
+        import struct
+
+        icons_dir = tauri_path / "src-tauri" / "icons"
+        icon_path = icons_dir / "icon.png"
+
+        # Create a 32x32 RGBA image with a simple gradient
+        width, height = 32, 32
+
+        # Generate pixel data (RGBA format with a teal/blue gradient)
+        pixels = bytearray()
+        for y in range(height):
+            pixels.append(0)  # Filter type (0 = none)
+            for x in range(width):
+                # Create a simple teal to blue gradient
+                r = 0x20 + (x * 2)
+                g = 0x80 + (y * 2)
+                b = 0xE0 - (x * 2)
+                a = 0xFF  # Fully opaque
+                pixels.extend([r, g, b, a])
+
+        # Compress the pixel data
+        compressed = zlib.compress(bytes(pixels), 9)
+
+        # Build PNG file
+        png_data = bytearray()
+
+        # PNG signature
+        png_data.extend(b'\x89PNG\r\n\x1a\n')
+
+        # IHDR chunk
+        ihdr_data = struct.pack('>IIBBBBB', width, height, 8, 6, 0, 0, 0)
+        png_data.extend(struct.pack('>I', len(ihdr_data)))
+        png_data.extend(b'IHDR')
+        png_data.extend(ihdr_data)
+        png_data.extend(struct.pack('>I', zlib.crc32(b'IHDR' + ihdr_data) & 0xffffffff))
+
+        # IDAT chunk
+        png_data.extend(struct.pack('>I', len(compressed)))
+        png_data.extend(b'IDAT')
+        png_data.extend(compressed)
+        png_data.extend(struct.pack('>I', zlib.crc32(b'IDAT' + compressed) & 0xffffffff))
+
+        # IEND chunk
+        png_data.extend(struct.pack('>I', 0))
+        png_data.extend(b'IEND')
+        png_data.extend(struct.pack('>I', zlib.crc32(b'IEND') & 0xffffffff))
+
+        with open(icon_path, "wb") as f:
+            f.write(png_data)
 
     def _copy_ui_source(self, tauri_path: Path) -> None:
         """Copy React UI source files to Tauri project."""
@@ -203,42 +267,32 @@ if (isTauriEnvironment()) {
             },
         }
 
-        # Only add icon configuration if icons exist
-        icons_dir = tauri_path / "src-tauri" / "icons"
-        if icons_dir.exists() and list(icons_dir.glob("*.png")):
-            bundle_config["icon"] = [
-                "icons/32x32.png",
-                "icons/128x128.png",
-                "icons/128x128@2x.png",
-                "icons/icon.icns",
-                "icons/icon.ico",
-            ]
+        # Don't add icon configuration - will use default
+        # Icons can be added later with: cargo tauri icon path/to/icon.png
 
-        # Tauri v2 minimal configuration
+        # Tauri v2 configuration
+        # Note: In Tauri v2, productName and version come from Cargo.toml
+        # Windows are created programmatically in lib.rs, not in config
         config = {
             "$schema": "../node_modules/@tauri-apps/cli/schema.json",
+            "identifier": bundle_config["identifier"],
             "build": {
                 "beforeDevCommand": "npm run dev",
-                "beforeBuildCommand": "npm run build"
+                "devUrl": "http://localhost:5173",
+                "beforeBuildCommand": "npm run build",
+                "frontendDist": "../dist"
             },
-            "package": {
-                "productName": metadata["app_name"],
-                "version": metadata["version"]
-            },
-            "tauri": {
-                "bundle": {
-                    "active": True,
-                    "targets": "all",
-                    "identifier": bundle_config["identifier"],
-                    "icon": bundle_config.get("icon", []),
-                    "resources": bundle_config.get("resources", []),
-                    "externalBin": bundle_config.get("externalBin", []),
-                    "copyright": bundle_config.get("copyright", ""),
-                    "category": bundle_config.get("category", "DeveloperTool"),
-                    "shortDescription": metadata["description"],
-                    "longDescription": metadata["description"],
-                    "macOS": bundle_config.get("macOS", {}),
-                }
+            "bundle": {
+                "active": True,
+                "targets": "all",
+                "icon": bundle_config.get("icon", []),
+                "resources": bundle_config.get("resources", []),
+                "externalBin": bundle_config.get("externalBin", []),
+                "copyright": bundle_config.get("copyright", ""),
+                "category": bundle_config.get("category", "DeveloperTool"),
+                "shortDescription": metadata["description"],
+                "longDescription": metadata["description"],
+                "macOS": bundle_config.get("macOS", {}),
             }
         }
 
@@ -252,17 +306,18 @@ if (isTauriEnvironment()) {
         capabilities_dir.mkdir(parents=True, exist_ok=True)
 
         # Main capability file for the app
+        # Tauri v2 uses core:* permissions
         main_capability = {
             "identifier": "main-capability",
             "description": "Capability for the main window",
             "windows": ["main"],
             "permissions": [
                 "core:default",
+                "core:window:default",
+                "core:webview:default",
+                "shell:default",
                 "shell:allow-open",
-                "fs:allow-read-file",
-                "fs:allow-write-file",
-                "fs:allow-exists",
-                "http:default",
+                "shell:allow-spawn",
             ],
         }
 
@@ -285,15 +340,35 @@ fn main() {
         with open(main_rs_path, "w") as f:
             f.write(main_rs)
 
-        # lib.rs with Python backend management
-        lib_rs = """// Tauri v2 application library
-use std::process::{Command, Stdio};
+        # lib.rs with Python backend management and window creation
+        app_name = metadata["app_name"]
+        lib_rs = f"""// Tauri v2 application library
+use std::process::{{Command, Stdio}};
+use tauri::{{Manager, WebviewWindowBuilder, WebviewUrl}};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
+pub fn run() {{
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .setup(|app| {
+        .setup(|app| {{
+            // Create the main window with explicit visibility
+            let _window = WebviewWindowBuilder::new(
+                app,
+                "main",
+                WebviewUrl::App("index.html".into())
+            )
+            .title("{app_name}")
+            .inner_size(1200.0, 800.0)
+            .resizable(true)
+            .visible(true)
+            .center()
+            .focused(true)
+            .build()
+            .map_err(|e| {{
+                eprintln!("Failed to create window: {{}}", e);
+                e
+            }})?;
+
             // Start Python backend as a separate process
             // The Python script will find its own port and communicate it
             let resource_dir = app.path()
@@ -314,10 +389,10 @@ pub fn run() {
             // The React UI will poll for the backend to be ready.
 
             Ok(())
-        })
+        }})
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-}
+}}
 """
         lib_rs_path = tauri_path / "src-tauri" / "src" / "lib.rs"
         with open(lib_rs_path, "w") as f:
@@ -325,8 +400,9 @@ pub fn run() {
 
     def _generate_cargo_toml(self, tauri_path: Path, metadata: Dict[str, str]) -> None:
         """Generate Cargo.toml for Rust project."""
+        app_name = metadata["app_name"].lower().replace(" ", "-")
         cargo_toml = f'''[package]
-name = "{metadata["app_name"].lower().replace(" ", "-")}"
+name = "{app_name}"
 version = "{metadata["version"]}"
 description = "{metadata["description"]}"
 authors = ["{metadata.get("author", "Any Agent")}"]
@@ -340,6 +416,10 @@ edition = "2021"
 name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[[bin]]
+name = "{app_name}"
+path = "src/main.rs"
+
 [build-dependencies]
 tauri-build = {{ version = "2", features = [] }}
 
@@ -348,6 +428,10 @@ tauri = {{ version = "2", features = [] }}
 tauri-plugin-shell = "2"
 serde = {{ version = "1", features = ["derive"] }}
 serde_json = "1"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
 '''
 
         cargo_toml_path = tauri_path / "src-tauri" / "Cargo.toml"
@@ -391,8 +475,8 @@ serde_json = "1"
             "dependencies": original.get("dependencies", {}),
             "devDependencies": {
                 **original.get("devDependencies", {}),
-                "@tauri-apps/cli": "^1.5.0",
-                "@tauri-apps/api": "^1.5.0",
+                "@tauri-apps/cli": "^2.0.0",
+                "@tauri-apps/api": "^2.0.0",
             },
         }
 
