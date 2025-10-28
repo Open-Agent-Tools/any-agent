@@ -37,7 +37,7 @@ export class ConfigManager {
     if (!tauri) return false;
 
     try {
-      const result = await tauri.core.invoke('config_exists');
+      const result = await tauri.invoke('config_exists');
       return result as boolean;
     } catch (error) {
       console.error('Failed to check config existence:', error);
@@ -53,7 +53,7 @@ export class ConfigManager {
     if (!tauri) return 'Config path not available (browser mode)';
 
     try {
-      const result = await tauri.core.invoke('get_config_path');
+      const result = await tauri.invoke('get_config_path');
       return result as string;
     } catch (error) {
       console.error('Failed to get config path:', error);
@@ -80,7 +80,7 @@ export class ConfigManager {
     }
 
     try {
-      const result = await tauri.core.invoke('read_config');
+      const result = await tauri.invoke('read_config');
       return result as AgentConfig;
     } catch (error) {
       console.error('Failed to read config:', error);
@@ -100,7 +100,7 @@ export class ConfigManager {
     }
 
     try {
-      await tauri.core.invoke('write_config', { config });
+      await tauri.invoke('write_config', { config });
     } catch (error) {
       console.error('Failed to write config:', error);
       throw new Error('Failed to save configuration');
