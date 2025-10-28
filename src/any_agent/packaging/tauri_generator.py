@@ -45,6 +45,9 @@ class TauriProjectGenerator:
             # Generate Tauri configuration
             self._generate_tauri_config(tauri_path, metadata)
 
+            # Generate Tauri v2 capabilities
+            self._generate_capabilities(tauri_path)
+
             # Generate Rust main.rs
             self._generate_rust_main(tauri_path, metadata)
 
@@ -212,36 +215,17 @@ if (isTauriEnvironment()) {
             ]
 
         config = {
+            "productName": metadata["app_name"],
+            "version": metadata["version"],
+            "identifier": bundle_config["identifier"],
             "build": {
                 "beforeDevCommand": "npm run dev",
                 "beforeBuildCommand": "npm run build",
-                "devPath": "http://localhost:1420",
-                "distDir": "../dist",
+                "devUrl": "http://localhost:1420",
+                "frontendDist": "../dist",
             },
-            "package": {
-                "productName": metadata["app_name"],
-                "version": metadata["version"],
-            },
-            "tauri": {
-                "allowlist": {
-                    "all": False,
-                    "shell": {"all": False, "open": True},
-                    "dialog": {"all": False, "open": False},
-                    "fs": {
-                        "all": False,
-                        "readFile": True,
-                        "writeFile": True,
-                        "exists": True,
-                        "scope": ["$APPDATA/*", "$HOME/Library/Application Support/*"],
-                    },
-                    "http": {
-                        "all": False,
-                        "request": True,
-                        "scope": ["http://localhost:*"],
-                    },
-                },
-                "bundle": bundle_config,
-                "security": {"csp": None},
+            "bundle": bundle_config,
+            "app": {
                 "windows": [
                     {
                         "fullscreen": False,
@@ -253,6 +237,9 @@ if (isTauriEnvironment()) {
                         "minHeight": 600,
                     }
                 ],
+                "security": {
+                    "csp": None,
+                },
             },
         }
 
@@ -260,62 +247,38 @@ if (isTauriEnvironment()) {
         with open(config_path, "w") as f:
             json.dump(config, f, indent=2)
 
+    def _generate_capabilities(self, tauri_path: Path) -> None:
+        """Generate Tauri v2 capabilities for permissions."""
+        capabilities_dir = tauri_path / "src-tauri" / "capabilities"
+        capabilities_dir.mkdir(parents=True, exist_ok=True)
+
+        # Main capability file for the app
+        main_capability = {
+            "identifier": "main-capability",
+            "description": "Capability for the main window",
+            "windows": ["main"],
+            "permissions": [
+                "core:default",
+                "shell:allow-open",
+                "fs:allow-read-file",
+                "fs:allow-write-file",
+                "fs:allow-exists",
+                "http:default",
+            ],
+        }
+
+        capability_path = capabilities_dir / "main.json"
+        with open(capability_path, "w") as f:
+            json.dump(main_capability, f, indent=2)
+
     def _generate_rust_main(self, tauri_path: Path, metadata: Dict[str, str]) -> None:
         """Generate Rust main.rs file."""
+        # Tauri v2 - main.rs just calls the library
         main_rs = """// Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::process::{Command, Stdio};
-use std::sync::Mutex;
-use tauri::State;
-
-struct AppState {
-    python_child: Mutex<Option<std::process::Child>>,
-}
-
-#[tauri::command]
-fn get_backend_port(state: State<AppState>) -> Result<u16, String> {
-    // Port will be set by Python backend via environment variable
-    std::env::var("AGENT_PORT")
-        .ok()
-        .and_then(|p| p.parse().ok())
-        .ok_or_else(|| "Backend port not available yet".to_string())
-}
-
 fn main() {
-    tauri::Builder::default()
-        .setup(|app| {
-            // Get the resource directory
-            let resource_dir = app.path_resolver()
-                .resource_dir()
-                .expect("failed to resolve resource dir");
-
-            // Start Python backend as subprocess
-            let python_runtime = resource_dir.join("python-runtime/run_agent.py");
-
-            let child = Command::new("python3")
-                .arg(python_runtime)
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()
-                .expect("Failed to start Python backend");
-
-            // Store the child process handle
-            app.manage(AppState {
-                python_child: Mutex::new(Some(child)),
-            });
-
-            Ok(())
-        })
-        .on_window_event(|event| {
-            if let tauri::WindowEvent::CloseRequested { .. } = event.event() {
-                // Cleanup Python process on window close
-                // This is automatically handled when the app exits
-            }
-        })
-        .invoke_handler(tauri::generate_handler![get_backend_port])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+    app_lib::run()
 }
 """
 
@@ -323,30 +286,69 @@ fn main() {
         with open(main_rs_path, "w") as f:
             f.write(main_rs)
 
+        # lib.rs with Python backend management
+        lib_rs = """// Tauri v2 application library
+use std::process::{Command, Stdio};
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
+        .setup(|app| {
+            // Start Python backend as a separate process
+            // The Python script will find its own port and communicate it
+            let resource_dir = app.path()
+                .resource_dir()
+                .expect("failed to resolve resource dir");
+
+            let python_script = resource_dir.join("python-runtime/run_agent.py");
+            let venv_python = resource_dir.join("python-runtime/venv/bin/python");
+
+            // Try to start Python backend
+            let _child = Command::new(&venv_python)
+                .arg(&python_script)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn();
+
+            // Note: We don't wait for the Python process here.
+            // The React UI will poll for the backend to be ready.
+
+            Ok(())
+        })
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
+"""
+        lib_rs_path = tauri_path / "src-tauri" / "src" / "lib.rs"
+        with open(lib_rs_path, "w") as f:
+            f.write(lib_rs)
+
     def _generate_cargo_toml(self, tauri_path: Path, metadata: Dict[str, str]) -> None:
         """Generate Cargo.toml for Rust project."""
         cargo_toml = f'''[package]
 name = "{metadata["app_name"].lower().replace(" ", "-")}"
 version = "{metadata["version"]}"
 description = "{metadata["description"]}"
-authors = ["{metadata["author"]}"]
+authors = ["{metadata.get("author", "Any Agent")}"]
 license = ""
 repository = ""
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
 [build-dependencies]
-tauri-build = {{ version = "1.5", features = [] }}
+tauri-build = {{ version = "2", features = [] }}
 
 [dependencies]
-tauri = {{ version = "1.5", features = ["shell-open"] }}
-serde = {{ version = "1.0", features = ["derive"] }}
-serde_json = "1.0"
-
-[features]
-# This feature is used for production builds or when `devPath` points to the filesystem
-custom-protocol = ["tauri/custom-protocol"]
+tauri = {{ version = "2", features = [] }}
+tauri-plugin-shell = "2"
+serde = {{ version = "1", features = ["derive"] }}
+serde_json = "1"
 '''
 
         cargo_toml_path = tauri_path / "src-tauri" / "Cargo.toml"
