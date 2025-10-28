@@ -649,7 +649,6 @@ class AgentOrchestrator:
                 framework=metadata.framework,
                 model=metadata.model,
                 port=port,
-                # custom_agent_name parameter removed with Helmsman cleanup
             )
 
             # Step 4: Create Docker image (conditional)

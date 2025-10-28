@@ -51,8 +51,6 @@ class LocalhostOrchestrator:
         agent_path: str,
         output_dir: Optional[str] = None,
         port: int = 8080,
-        helmsman_enabled: bool = False,
-        helmsman_url: str = "http://localhost:7080",
         agent_id: Optional[str] = None,
         environment: str = "development",
         add_ui: bool = False,
@@ -65,8 +63,6 @@ class LocalhostOrchestrator:
             agent_path: Path to agent directory
             output_dir: Output directory for build artifacts
             port: Port to run server on
-            helmsman_enabled: Enable Helmsman registration
-            helmsman_url: Helmsman service URL
             agent_id: Agent identifier
             environment: Environment type
             add_ui: Enable UI integration

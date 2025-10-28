@@ -32,9 +32,9 @@ logging.basicConfig(level=logging.ERROR)
 warnings.filterwarnings("ignore")
 
 # Configuration from environment variables only
-HELMSMAN_MCP_URL = os.getenv("HELMSMAN_MCP_URL", "http://localhost:7081/mcp") # helmsman
+MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:8080/mcp")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
-GOOGLE_MODEL = os.getenv("GOOGLE_MODEL", "gemini-1.5-flash")
+GOOGLE_MODEL = os.getenv("GOOGLE_MODEL", "gemini-2.5-flash")
 
 
 def create_agent() -> Agent:
@@ -48,29 +48,24 @@ def create_agent() -> Agent:
     # Load datetime tools for natural language time handling
     date_tools = load_all_datetime_tools()
 
-    # Docker URL translation for MCP servers
-
-
-    # Translate MCP server URL for Docker environment
-    # Try to include MCP tools with Docker URL translation
+    # Try to include MCP tools if MCP_SERVER_URL is configured
     agent_tools = date_tools
-    try:
-        mcp_toolset = [
-            MCPToolset(
-                connection_params=StreamableHTTPConnectionParams(
-                    url=HELMSMAN_MCP_URL, #helmsman
+    if MCP_SERVER_URL:
+        try:
+            mcp_toolset = [
+                MCPToolset(
+                    connection_params=StreamableHTTPConnectionParams(
+                        url=MCP_SERVER_URL,
+                    ),
                 ),
-            ),
-        ]
-        agent_tools = date_tools + mcp_toolset
-        print(
-            f"Successfully configured MCP tools for {HELMSMAN_MCP_URL} (translated from {HELMSMAN_MCP_URL})"
-        )
-    except Exception as e:
-        print(
-            f"Warning: Could not configure MCP tools for {HELMSMAN_MCP_URL}: {e}, using basic tools only"
-        )
-        agent_tools = date_tools
+            ]
+            agent_tools = date_tools + mcp_toolset
+            print(f"Successfully configured MCP tools for {MCP_SERVER_URL}")
+        except Exception as e:
+            print(
+                f"Warning: Could not configure MCP tools for {MCP_SERVER_URL}: {e}, using basic tools only"
+            )
+            agent_tools = date_tools
 
     return Agent(
         model=GOOGLE_MODEL,

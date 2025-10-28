@@ -367,8 +367,6 @@ def main(
             if verbose:
                 click.echo(f"🔌 No framework detected, using fallback port: {port}")
 
-    # Removal/Helmsman functionality has been deprecated and removed
-
     # Pipeline divergence point - localhost vs Docker
     if localhost:
         click.echo("🏠 Any Agent Framework - Localhost Development Mode")

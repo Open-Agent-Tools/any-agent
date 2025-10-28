@@ -142,9 +142,6 @@ class EnvironmentLoader:
         common_vars = [
             "AGENT_PORT",
             "MCP_SERVER_URL",
-            "HELMSMAN_URL",
-            "HELMSMAN_MCP_URL",
-            "HELMSMAN_TOKEN",
             "AGENT_ID",
         ]
 
