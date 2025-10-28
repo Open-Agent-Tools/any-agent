@@ -214,33 +214,32 @@ if (isTauriEnvironment()) {
                 "icons/icon.ico",
             ]
 
+        # Tauri v2 minimal configuration
         config = {
-            "productName": metadata["app_name"],
-            "version": metadata["version"],
-            "identifier": bundle_config["identifier"],
+            "$schema": "../node_modules/@tauri-apps/cli/schema.json",
             "build": {
                 "beforeDevCommand": "npm run dev",
-                "beforeBuildCommand": "npm run build",
-                "devUrl": "http://localhost:1420",
-                "frontendDist": "../dist",
+                "beforeBuildCommand": "npm run build"
             },
-            "bundle": bundle_config,
-            "app": {
-                "windows": [
-                    {
-                        "fullscreen": False,
-                        "resizable": True,
-                        "title": metadata["app_name"],
-                        "width": 1200,
-                        "height": 800,
-                        "minWidth": 800,
-                        "minHeight": 600,
-                    }
-                ],
-                "security": {
-                    "csp": None,
-                },
+            "package": {
+                "productName": metadata["app_name"],
+                "version": metadata["version"]
             },
+            "tauri": {
+                "bundle": {
+                    "active": True,
+                    "targets": "all",
+                    "identifier": bundle_config["identifier"],
+                    "icon": bundle_config.get("icon", []),
+                    "resources": bundle_config.get("resources", []),
+                    "externalBin": bundle_config.get("externalBin", []),
+                    "copyright": bundle_config.get("copyright", ""),
+                    "category": bundle_config.get("category", "DeveloperTool"),
+                    "shortDescription": metadata["description"],
+                    "longDescription": metadata["description"],
+                    "macOS": bundle_config.get("macOS", {}),
+                }
+            }
         }
 
         config_path = tauri_path / "src-tauri" / "tauri.conf.json"
