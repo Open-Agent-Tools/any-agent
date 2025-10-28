@@ -2,6 +2,7 @@
 
 import json
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Any, Dict
 
@@ -36,6 +37,10 @@ class TauriProjectGenerator:
 
             # Copy React UI source
             self._copy_ui_source(tauri_path)
+
+            # Process icon if provided
+            if metadata.get("icon_path") and metadata["icon_path"] != "default":
+                self._process_icon(tauri_path, Path(metadata["icon_path"]))
 
             # Generate Tauri configuration
             self._generate_tauri_config(tauri_path, metadata)
@@ -143,10 +148,69 @@ if (isTauriEnvironment()) {
         with open(api_file, "w") as f:
             f.write(modified_content)
 
+    def _process_icon(self, tauri_path: Path, icon_path: Path) -> None:
+        """
+        Process icon file and generate all required sizes using Tauri CLI.
+
+        Args:
+            tauri_path: Path to the Tauri project
+            icon_path: Path to the source icon file
+        """
+        if not icon_path.exists():
+            return
+
+        # Create icons directory
+        icons_dir = tauri_path / "src-tauri" / "icons"
+        icons_dir.mkdir(parents=True, exist_ok=True)
+
+        # Use Tauri CLI to generate all icon sizes
+        try:
+            subprocess.run(
+                ["cargo", "tauri", "icon", str(icon_path)],
+                cwd=tauri_path,
+                check=True,
+                capture_output=True,
+            )
+        except subprocess.CalledProcessError:
+            # Fallback: just copy the source icon
+            shutil.copy(icon_path, icons_dir / "icon.png")
+
     def _generate_tauri_config(
         self, tauri_path: Path, metadata: Dict[str, str]
     ) -> None:
         """Generate tauri.conf.json."""
+        # Build bundle configuration
+        bundle_config = {
+            "active": True,
+            "targets": "all",
+            "identifier": f"com.{metadata.get('author', 'anyagent').lower().replace(' ', '').replace('-', '')}.{metadata['app_name'].lower().replace(' ', '').replace('-', '')}",
+            "resources": ["resources/*"],
+            "externalBin": [],
+            "copyright": f"Copyright © {metadata.get('author', 'Any Agent')}",
+            "category": "DeveloperTool",
+            "shortDescription": metadata["description"],
+            "longDescription": metadata["description"],
+            "macOS": {
+                "frameworks": [],
+                "minimumSystemVersion": "10.13",
+                "exceptionDomain": "",
+                "signingIdentity": None,
+                "providerShortName": None,
+                "entitlements": None,
+            },
+        }
+
+        # Only add icon configuration if icons exist
+        icons_dir = tauri_path / "src-tauri" / "icons"
+        if icons_dir.exists() and list(icons_dir.glob("*.png")):
+            bundle_config["icon"] = [
+                "icons/32x32.png",
+                "icons/128x128.png",
+                "icons/128x128@2x.png",
+                "icons/icon.icns",
+                "icons/icon.ico",
+            ]
+
         config = {
             "build": {
                 "beforeDevCommand": "npm run dev",
@@ -176,32 +240,7 @@ if (isTauriEnvironment()) {
                         "scope": ["http://localhost:*"],
                     },
                 },
-                "bundle": {
-                    "active": True,
-                    "targets": "all",
-                    "identifier": f"com.{metadata['author'].lower().replace(' ', '')}.{metadata['app_name'].lower().replace(' ', '')}",
-                    "icon": [
-                        "icons/32x32.png",
-                        "icons/128x128.png",
-                        "icons/128x128@2x.png",
-                        "icons/icon.icns",
-                        "icons/icon.ico",
-                    ],
-                    "resources": ["resources/*"],
-                    "externalBin": ["binaries/python-runtime"],
-                    "copyright": f"Copyright © {metadata['author']}",
-                    "category": "DeveloperTool",
-                    "shortDescription": metadata["description"],
-                    "longDescription": metadata["description"],
-                    "macOS": {
-                        "frameworks": [],
-                        "minimumSystemVersion": "10.13",
-                        "exceptionDomain": "",
-                        "signingIdentity": None,
-                        "providerShortName": None,
-                        "entitlements": None,
-                    },
-                },
+                "bundle": bundle_config,
                 "security": {"csp": None},
                 "windows": [
                     {
