@@ -132,7 +132,7 @@ class TauriProjectGenerator:
         # Replace API_BASE_URL with dynamic version
         modified_content = content.replace(
             "const API_BASE_URL = '';",
-            """import { getBackendURL, isTauriEnvironment, initializeTauriBackend } from './tauri_api_adapter';
+            """import { isTauriEnvironment, initializeTauriBackend } from './tauri_api_adapter';
 
 let API_BASE_URL = '';
 
