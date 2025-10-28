@@ -340,16 +340,104 @@ fn main() {
         with open(main_rs_path, "w") as f:
             f.write(main_rs)
 
-        # lib.rs with Python backend management and window creation
+        # lib.rs with Python backend management, window creation, and config management
         app_name = metadata["app_name"]
         lib_rs = f"""// Tauri v2 application library
 use std::process::{{Command, Stdio}};
+use std::fs;
+use std::path::PathBuf;
 use tauri::{{Manager, WebviewWindowBuilder, WebviewUrl}};
+use serde_json::{{Value, json}};
+
+// Config management commands
+#[tauri::command]
+fn get_config_path() -> Result<String, String> {{
+    let config_dir = if cfg!(target_os = "macos") {{
+        dirs::home_dir()
+            .ok_or("Failed to get home directory")?
+            .join("Library")
+            .join("Application Support")
+            .join("AnyAgent")
+    }} else if cfg!(target_os = "windows") {{
+        dirs::config_dir()
+            .ok_or("Failed to get config directory")?
+            .join("AnyAgent")
+    }} else {{
+        dirs::home_dir()
+            .ok_or("Failed to get home directory")?
+            .join(".config")
+            .join("anyagent")
+    }};
+
+    let config_file = config_dir.join("config.json");
+    Ok(config_file.to_string_lossy().to_string())
+}}
+
+#[tauri::command]
+fn config_exists() -> bool {{
+    if let Ok(path) = get_config_path() {{
+        PathBuf::from(path).exists()
+    }} else {{
+        false
+    }}
+}}
+
+#[tauri::command]
+fn read_config() -> Result<Value, String> {{
+    let path = get_config_path()?;
+    let path_buf = PathBuf::from(&path);
+
+    if !path_buf.exists() {{
+        // Return default template config
+        return Ok(json!({{
+            "GOOGLE_API_KEY": "",
+            "ANTHROPIC_API_KEY": "",
+            "OPENAI_API_KEY": "",
+            "AWS_REGION": "us-west-2",
+            "GOOGLE_MODEL": "gemini-pro",
+        }}));
+    }}
+
+    let contents = fs::read_to_string(&path_buf)
+        .map_err(|e| format!("Failed to read config: {{}}", e))?;
+
+    let config: Value = serde_json::from_str(&contents)
+        .map_err(|e| format!("Failed to parse config: {{}}", e))?;
+
+    Ok(config)
+}}
+
+#[tauri::command]
+fn write_config(config: Value) -> Result<(), String> {{
+    let path = get_config_path()?;
+    let path_buf = PathBuf::from(&path);
+
+    // Create parent directory if it doesn't exist
+    if let Some(parent) = path_buf.parent() {{
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create config directory: {{}}", e))?;
+    }}
+
+    // Write config file
+    let contents = serde_json::to_string_pretty(&config)
+        .map_err(|e| format!("Failed to serialize config: {{}}", e))?;
+
+    fs::write(&path_buf, contents)
+        .map_err(|e| format!("Failed to write config: {{}}", e))?;
+
+    Ok(())
+}}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {{
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .invoke_handler(tauri::generate_handler![
+            get_config_path,
+            config_exists,
+            read_config,
+            write_config
+        ])
         .setup(|app| {{
             // Create the main window with explicit visibility
             let _window = WebviewWindowBuilder::new(
@@ -428,6 +516,7 @@ tauri = {{ version = "2", features = [] }}
 tauri-plugin-shell = "2"
 serde = {{ version = "1", features = ["derive"] }}
 serde_json = "1"
+dirs = "5"
 
 [features]
 default = ["custom-protocol"]
