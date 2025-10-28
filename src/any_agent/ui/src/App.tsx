@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router } from 'react-router-dom';
+import { BrowserRouter as Router, useLocation } from 'react-router-dom';
 import { ThemeProvider, CssBaseline, Box } from '@mui/material';
 import anyAgentTheme from '@/theme';
 import { AgentMetadata } from '@/types';
@@ -12,7 +12,8 @@ import { SettingsPage } from '@/pages/SettingsPage';
 import { SetupWizard } from '@/components/SetupWizard';
 import { ConfigManager } from '@/utils/configManager';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
+  const location = useLocation();
   const [agentMetadata, setAgentMetadata] = useState<AgentMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -22,6 +23,7 @@ const App: React.FC = () => {
   console.log('App component initializing');
   console.log('Current URL:', window.location.href);
   console.log('Current pathname:', window.location.pathname);
+  console.log('Location from useLocation:', location.pathname);
   console.log('UI Build timestamp: 2025-01-19T18:15:00Z - Router Bypass Fix v0.2.5');
 
   // Check for first-run setup (Tauri mode only)
@@ -65,8 +67,8 @@ const App: React.FC = () => {
   }, []);
 
   // Routing logic - check for settings, describe, or default to chat
-  const currentPath = window.location.pathname;
-  const hasForceChat = window.location.search.includes('force_chat=true');
+  const currentPath = location.pathname;
+  const hasForceChat = location.search.includes('force_chat=true');
   const isSettingsPage = currentPath === '/settings';
   const isExplicitlyDescribe = currentPath === '/describe' && !hasForceChat;
   const shouldShowDescription = false; // Temporarily force chat interface
@@ -77,7 +79,7 @@ const App: React.FC = () => {
     isSettingsPage,
     isExplicitlyDescribe,
     shouldShowDescription,
-    search: window.location.search
+    search: location.search
   });
 
   useEffect(() => {
@@ -148,59 +150,65 @@ const App: React.FC = () => {
   }
 
   return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh',
+        backgroundColor: 'background.default',
+      }}
+    >
+      <Header />
+
+      <Box
+        component="main"
+        sx={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        {/* Direct conditional rendering to bypass router issues */}
+        {isSettingsPage ? (
+          <>
+            {console.log('Rendering SettingsPage')}
+            <SettingsPage />
+          </>
+        ) : shouldShowDescription ? (
+          <>
+            {console.log('Rendering DescriptionPage based on direct pathname check')}
+            <DescriptionPage agentMetadata={agentMetadata} />
+          </>
+        ) : (
+          <>
+            {console.log('Rendering ChatPage as default (not DescriptionPage)')}
+            <ChatPage
+              agentMetadata={agentMetadata}
+              onAgentMetadataUpdate={handleAgentMetadataUpdate}
+            />
+          </>
+        )}
+      </Box>
+
+      {/* Setup Wizard - only in Tauri mode */}
+      {isTauriMode && (
+        <SetupWizard
+          open={showSetupWizard}
+          onComplete={handleSetupComplete}
+        />
+      )}
+
+      <Footer agentMetadata={agentMetadata} />
+    </Box>
+  );
+};
+
+const App: React.FC = () => {
+  return (
     <ThemeProvider theme={anyAgentTheme}>
       <CssBaseline />
       <Router>
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            minHeight: '100vh',
-            backgroundColor: 'background.default',
-          }}
-        >
-          <Header />
-          
-          <Box
-            component="main"
-            sx={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
-            {/* Direct conditional rendering to bypass router issues */}
-            {isSettingsPage ? (
-              <>
-                {console.log('Rendering SettingsPage')}
-                <SettingsPage />
-              </>
-            ) : shouldShowDescription ? (
-              <>
-                {console.log('Rendering DescriptionPage based on direct pathname check')}
-                <DescriptionPage agentMetadata={agentMetadata} />
-              </>
-            ) : (
-              <>
-                {console.log('Rendering ChatPage as default (not DescriptionPage)')}
-                <ChatPage
-                  agentMetadata={agentMetadata}
-                  onAgentMetadataUpdate={handleAgentMetadataUpdate}
-                />
-              </>
-            )}
-          </Box>
-
-          {/* Setup Wizard - only in Tauri mode */}
-          {isTauriMode && (
-            <SetupWizard
-              open={showSetupWizard}
-              onComplete={handleSetupComplete}
-            />
-          )}
-
-          <Footer agentMetadata={agentMetadata} />
-        </Box>
+        <AppContent />
       </Router>
     </ThemeProvider>
   );
