@@ -21,6 +21,7 @@ interface NavigationProps {
 const navigationItems = [
   { text: 'Chat Interface', path: '/' },
   { text: 'Agent Description', path: '/describe' },
+  { text: 'Settings', path: '/settings' },
   { text: 'Health Check', path: '/health', external: true },
   { text: 'Agent Card', path: '/.well-known/agent-card.json', external: true },
 ];

@@ -8,16 +8,52 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ChatPage from '@/pages/ChatPage';
 import DescriptionPage from '@/pages/DescriptionPage';
+import { SettingsPage } from '@/pages/SettingsPage';
+import { SetupWizard } from '@/components/SetupWizard';
+import { ConfigManager } from '@/utils/configManager';
 
 const App: React.FC = () => {
   const [agentMetadata, setAgentMetadata] = useState<AgentMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [showSetupWizard, setShowSetupWizard] = useState(false);
+  const [isTauriMode, setIsTauriMode] = useState(false);
 
   console.log('App component initializing');
   console.log('Current URL:', window.location.href);
   console.log('Current pathname:', window.location.pathname);
   console.log('UI Build timestamp: 2025-01-19T18:15:00Z - Router Bypass Fix v0.2.5');
+
+  // Check for first-run setup (Tauri mode only)
+  useEffect(() => {
+    const checkFirstRun = async () => {
+      const tauri = typeof window !== 'undefined' && '__TAURI__' in window;
+      setIsTauriMode(tauri);
+
+      if (tauri) {
+        try {
+          const configExists = await ConfigManager.configExists();
+          console.log('Config exists:', configExists);
+
+          if (!configExists) {
+            console.log('First run detected - showing setup wizard');
+            setShowSetupWizard(true);
+          }
+        } catch (error) {
+          console.error('Error checking config:', error);
+        }
+      }
+    };
+
+    checkFirstRun();
+  }, []);
+
+  const handleSetupComplete = () => {
+    console.log('Setup wizard completed');
+    setShowSetupWizard(false);
+    // Optionally reload the page to apply new credentials
+    window.location.reload();
+  };
 
   // Force navigation to root if we're on describe page but want chat interface
   useEffect(() => {
@@ -28,17 +64,17 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Force chat interface by default - NEVER show description unless explicitly requested
+  // Routing logic - check for settings, describe, or default to chat
   const currentPath = window.location.pathname;
   const hasForceChat = window.location.search.includes('force_chat=true');
+  const isSettingsPage = currentPath === '/settings';
   const isExplicitlyDescribe = currentPath === '/describe' && !hasForceChat;
-
-  // OVERRIDE: Always show chat interface for now to debug the issue
   const shouldShowDescription = false; // Temporarily force chat interface
 
   console.log('PATH DEBUG:', {
     currentPath,
     hasForceChat,
+    isSettingsPage,
     isExplicitlyDescribe,
     shouldShowDescription,
     search: window.location.search
@@ -134,7 +170,12 @@ const App: React.FC = () => {
             }}
           >
             {/* Direct conditional rendering to bypass router issues */}
-            {shouldShowDescription ? (
+            {isSettingsPage ? (
+              <>
+                {console.log('Rendering SettingsPage')}
+                <SettingsPage />
+              </>
+            ) : shouldShowDescription ? (
               <>
                 {console.log('Rendering DescriptionPage based on direct pathname check')}
                 <DescriptionPage agentMetadata={agentMetadata} />
@@ -149,6 +190,14 @@ const App: React.FC = () => {
               </>
             )}
           </Box>
+
+          {/* Setup Wizard - only in Tauri mode */}
+          {isTauriMode && (
+            <SetupWizard
+              open={showSetupWizard}
+              onComplete={handleSetupComplete}
+            />
+          )}
 
           <Footer agentMetadata={agentMetadata} />
         </Box>
