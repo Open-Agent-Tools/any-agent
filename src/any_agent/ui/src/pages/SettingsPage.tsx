@@ -45,8 +45,16 @@ export const SettingsPage: React.FC = () => {
     setLoading(true);
     setError(null);
 
-    // Check if running in Tauri
-    const tauri = typeof window !== 'undefined' && '__TAURI__' in window;
+    // Check if running in Tauri (improved detection)
+    const tauri = typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window);
+
+    console.log('SettingsPage Tauri detection:', {
+      tauri,
+      hasTauriGlobal: typeof window !== 'undefined' && '__TAURI__' in window,
+      hasTauriInternals: typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window,
+      windowKeys: typeof window !== 'undefined' ? Object.keys(window).filter(k => k.includes('TAURI')) : []
+    });
+
     setIsTauriMode(tauri);
 
     if (!tauri) {

@@ -6,16 +6,31 @@
  */
 
 // Check if we're running in Tauri environment
-const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+const isTauri = () => {
+  if (typeof window === 'undefined') return false;
+
+  // Tauri v2 detection - check multiple possible locations
+  // @ts-ignore
+  const hasTauri = '__TAURI__' in window || '__TAURI_INTERNALS__' in window;
+
+  console.log('Tauri detection:', {
+    hasTauri,
+    hasTauriGlobal: '__TAURI__' in window,
+    hasTauriInternals: '__TAURI_INTERNALS__' in window,
+    windowKeys: Object.keys(window).filter(k => k.includes('TAURI'))
+  });
+
+  return hasTauri;
+};
 
 // Type-safe Tauri API access
 const getTauriAPI = () => {
-  if (!isTauri) {
+  if (!isTauri()) {
     console.warn('Tauri API not available - running in browser mode');
     return null;
   }
   // @ts-ignore - Tauri is injected at runtime
-  return window.__TAURI__;
+  return window.__TAURI__ || window.__TAURI_INTERNALS__;
 };
 
 export interface AgentConfig {
@@ -66,8 +81,8 @@ export class ConfigManager {
    * Returns default template if config doesn't exist
    */
   static async readConfig(): Promise<AgentConfig> {
-    const tauri = getTauriAPI();
-    if (!tauri) {
+    if (!isTauri()) {
+      console.log('Not in Tauri mode, returning default config');
       // Return default config for browser mode
       return {
         GOOGLE_API_KEY: '',
@@ -77,6 +92,12 @@ export class ConfigManager {
         GOOGLE_MODEL: 'gemini-pro',
         MCP_SERVER_URL: '',
       };
+    }
+
+    const tauri = getTauriAPI();
+    if (!tauri) {
+      console.error('Tauri detected but API not available');
+      throw new Error('Tauri API not available');
     }
 
     try {

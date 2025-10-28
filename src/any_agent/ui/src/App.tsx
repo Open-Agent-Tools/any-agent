@@ -29,7 +29,16 @@ const AppContent: React.FC = () => {
   // Check for first-run setup (Tauri mode only)
   useEffect(() => {
     const checkFirstRun = async () => {
-      const tauri = typeof window !== 'undefined' && '__TAURI__' in window;
+      // Improved Tauri detection
+      const tauri = typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window);
+
+      console.log('Tauri mode check:', {
+        tauri,
+        hasTauriGlobal: typeof window !== 'undefined' && '__TAURI__' in window,
+        hasTauriInternals: typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window,
+        windowKeys: typeof window !== 'undefined' ? Object.keys(window).filter(k => k.includes('TAURI')) : []
+      });
+
       setIsTauriMode(tauri);
 
       if (tauri) {
@@ -44,6 +53,8 @@ const AppContent: React.FC = () => {
         } catch (error) {
           console.error('Error checking config:', error);
         }
+      } else {
+        console.log('Not in Tauri mode - skipping setup wizard check');
       }
     };
 
