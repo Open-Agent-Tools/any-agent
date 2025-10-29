@@ -346,7 +346,7 @@ class MacAppPackager:
             metadata=metadata,
             agent_path=agent_path,
             bundle_agent=True,  # Enable PyInstaller sidecar
-            framework=framework_result["framework"],
+            framework=framework_result["framework_name"],
         )
 
         if not result["success"]:
