@@ -240,8 +240,10 @@ else:
             'agent_parent_dir = bundle_dir'
         )
 
-        # Add uvicorn launcher at the end for standalone execution
-        uvicorn_launcher = f'''
+        # Replace the existing __main__ block with an enhanced one for PyInstaller
+        # The template has: uvicorn.run(app, host="localhost", port={port})
+        # We need: host="0.0.0.0" for external access and command-line port args
+        enhanced_main_block = f'''
 
 if __name__ == "__main__":
     import uvicorn
@@ -255,7 +257,7 @@ if __name__ == "__main__":
         except ValueError:
             print(f"Invalid port: {{sys.argv[1]}}, using default: {port}")
 
-    # Start uvicorn server
+    # Start uvicorn server (0.0.0.0 allows external connections)
     print(f"Starting A2A server on port {{port}}...")
     uvicorn.run(
         app,
@@ -265,7 +267,19 @@ if __name__ == "__main__":
     )
 '''
 
-        full_entrypoint = entrypoint_content + uvicorn_launcher
+        # Replace the template's __main__ block
+        original_main_pattern = f'''if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="localhost", port={port})'''
+
+        if original_main_pattern in entrypoint_content:
+            full_entrypoint = entrypoint_content.replace(
+                original_main_pattern,
+                enhanced_main_block.strip()
+            )
+        else:
+            # Fallback: append if pattern not found
+            full_entrypoint = entrypoint_content + enhanced_main_block
 
         # Save entrypoint in the build output directory (not in agent source)
         # This avoids modifying the agent's directory (especially for examples/)
