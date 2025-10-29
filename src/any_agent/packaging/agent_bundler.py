@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from any_agent.core.detector import AgentDetector
-from any_agent.core.framework_type import FrameworkType
 
 
 class AgentBundler:
@@ -27,7 +26,7 @@ class AgentBundler:
         self,
         output_dir: Path,
         app_name: str,
-        framework: Optional[FrameworkType] = None,
+        framework: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Bundle agent into a standalone executable.
@@ -35,7 +34,7 @@ class AgentBundler:
         Args:
             output_dir: Directory where bundled executable will be created
             app_name: Name for the executable
-            framework: Framework type (auto-detected if None)
+            framework: Framework type string (auto-detected if None)
 
         Returns:
             Dict with success status and executable path
@@ -44,7 +43,7 @@ class AgentBundler:
             # Detect framework if not provided
             if framework is None:
                 detection_result = self.detector.detect_framework(self.agent_path)
-                framework = detection_result.framework
+                framework = detection_result["framework"]
 
             # Create PyInstaller spec file
             spec_file = self._create_pyinstaller_spec(
@@ -57,7 +56,7 @@ class AgentBundler:
             return {
                 "success": True,
                 "executable_path": str(executable_path),
-                "framework": framework.value,
+                "framework": framework,
             }
 
         except Exception as bundle_error:
@@ -70,7 +69,7 @@ class AgentBundler:
         self,
         output_dir: Path,
         app_name: str,
-        framework: FrameworkType,
+        framework: str,
     ) -> Path:
         """
         Create PyInstaller spec file for the agent.
@@ -94,7 +93,7 @@ class AgentBundler:
         spec_content = f'''# -*- mode: python ; coding: utf-8 -*-
 
 # PyInstaller spec file for {app_name}
-# Framework: {framework.value}
+# Framework: {framework}
 
 import sys
 from pathlib import Path
@@ -159,35 +158,31 @@ exe = EXE(
 
         return spec_file
 
-    def _find_entry_point(self, framework: FrameworkType) -> Path:
+    def _find_entry_point(self, framework: str) -> Path:
         """
         Find the main entry point for the agent.
 
         Args:
-            framework: Framework type
+            framework: Framework type string
 
         Returns:
             Path to the entry point file
         """
         # Common entry point patterns by framework
-        if framework == FrameworkType.GOOGLE_ADK:
+        if framework.lower() in ("google_adk", "adk"):
             # Look for main.py or agent.py
             candidates = [
                 self.agent_path / "main.py",
                 self.agent_path / "agent.py",
                 self.agent_path / "app.py",
             ]
-        elif framework == FrameworkType.AWS_STRANDS:
+        elif framework.lower() in ("aws_strands", "strands"):
             candidates = [
                 self.agent_path / "agent.py",
                 self.agent_path / "main.py",
                 self.agent_path / "app.py",
             ]
-        elif framework in (
-            FrameworkType.LANGCHAIN,
-            FrameworkType.LANGGRAPH,
-            FrameworkType.CREWAI,
-        ):
+        elif framework.lower() in ("langchain", "langgraph", "crewai"):
             candidates = [
                 self.agent_path / "main.py",
                 self.agent_path / "app.py",
@@ -210,15 +205,15 @@ exe = EXE(
                 return py_file
 
         raise FileNotFoundError(
-            f"Could not find entry point for {framework.value} agent in {self.agent_path}"
+            f"Could not find entry point for {framework} agent in {self.agent_path}"
         )
 
-    def _get_hidden_imports(self, framework: FrameworkType) -> List[str]:
+    def _get_hidden_imports(self, framework: str) -> List[str]:
         """
         Get list of hidden imports needed for PyInstaller.
 
         Args:
-            framework: Framework type
+            framework: Framework type string
 
         Returns:
             List of module names to include as hidden imports
@@ -230,8 +225,10 @@ exe = EXE(
             "pathlib",
         ]
 
+        framework_key = framework.lower() if framework else ""
+
         framework_imports = {
-            FrameworkType.GOOGLE_ADK: [
+            "google_adk": [
                 "google",
                 "google.genai",
                 "google.genai.types",
@@ -242,7 +239,18 @@ exe = EXE(
                 "uvicorn",
                 "pydantic",
             ],
-            FrameworkType.AWS_STRANDS: [
+            "adk": [
+                "google",
+                "google.genai",
+                "google.genai.types",
+                "google.api_core",
+                "google.auth",
+                "aiohttp",
+                "fastapi",
+                "uvicorn",
+                "pydantic",
+            ],
+            "aws_strands": [
                 "anthropic",
                 "boto3",
                 "botocore",
@@ -250,7 +258,15 @@ exe = EXE(
                 "uvicorn",
                 "pydantic",
             ],
-            FrameworkType.LANGCHAIN: [
+            "strands": [
+                "anthropic",
+                "boto3",
+                "botocore",
+                "fastapi",
+                "uvicorn",
+                "pydantic",
+            ],
+            "langchain": [
                 "langchain",
                 "langchain_core",
                 "langchain_openai",
@@ -258,14 +274,14 @@ exe = EXE(
                 "fastapi",
                 "uvicorn",
             ],
-            FrameworkType.LANGGRAPH: [
+            "langgraph": [
                 "langgraph",
                 "langchain",
                 "langchain_core",
                 "fastapi",
                 "uvicorn",
             ],
-            FrameworkType.CREWAI: [
+            "crewai": [
                 "crewai",
                 "langchain",
                 "openai",
@@ -274,14 +290,14 @@ exe = EXE(
             ],
         }
 
-        return common_imports + framework_imports.get(framework, [])
+        return common_imports + framework_imports.get(framework_key, [])
 
-    def _get_data_files(self, framework: FrameworkType) -> List[tuple]:
+    def _get_data_files(self, framework: str) -> List[tuple]:
         """
         Get list of data files to include in the bundle.
 
         Args:
-            framework: Framework type
+            framework: Framework type string
 
         Returns:
             List of (source, dest) tuples for data files
@@ -297,7 +313,7 @@ exe = EXE(
                     )
 
         # Framework-specific data files
-        if framework == FrameworkType.GOOGLE_ADK:
+        if framework.lower() in ("google_adk", "adk"):
             # Include ADK config files
             for adk_file in self.agent_path.rglob("*.adk"):
                 data_files.append(

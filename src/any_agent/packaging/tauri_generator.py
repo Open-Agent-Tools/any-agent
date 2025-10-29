@@ -6,7 +6,6 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from any_agent.core.framework_type import FrameworkType
 from any_agent.packaging.agent_bundler import AgentBundler
 
 
@@ -23,7 +22,7 @@ class TauriProjectGenerator:
         metadata: Dict[str, str],
         agent_path: Path,
         bundle_agent: bool = False,
-        framework: Optional[FrameworkType] = None,
+        framework: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Generate complete Tauri project structure.
@@ -118,7 +117,7 @@ class TauriProjectGenerator:
         tauri_path: Path,
         agent_path: Path,
         app_name: str,
-        framework: Optional[FrameworkType] = None,
+        framework: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Bundle the agent as a Tauri sidecar executable.
