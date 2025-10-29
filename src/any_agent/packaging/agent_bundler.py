@@ -202,16 +202,43 @@ exe = EXE(
         port = port_map.get(framework_key, 8080)
 
         # Generate A2A entrypoint using the unified generator
+        # Use "localhost" deployment type for PyInstaller compatibility
         context = EntrypointContext(
             agent_name=self.agent_path.name,
             agent_path=self.agent_path,
             framework=framework_key,
             port=port,
             add_ui=False,  # No UI for sidecar
-            deployment_type="sidecar",  # Custom deployment type for bundling
+            deployment_type="localhost",
         )
 
         entrypoint_content = self.entrypoint_generator.generate_entrypoint(context)
+
+        # Replace hardcoded paths with PyInstaller-compatible path resolution
+        # PyInstaller extracts files to sys._MEIPASS at runtime
+        pyinstaller_loader = f"""
+# PyInstaller compatibility: use extracted files location
+if getattr(sys, 'frozen', False):
+    # Running in PyInstaller bundle
+    bundle_dir = sys._MEIPASS
+else:
+    # Running in development
+    bundle_dir = os.path.dirname(os.path.abspath(__file__))
+"""
+
+        # Insert PyInstaller loader after imports
+        import_end_marker = "logger = logging.getLogger(__name__)"
+        entrypoint_content = entrypoint_content.replace(
+            import_end_marker,
+            import_end_marker + "\n" + pyinstaller_loader
+        )
+
+        # Replace hardcoded agent_parent_dir with bundle_dir
+        agent_parent_dir_line = f'agent_parent_dir = "{self.agent_path.parent.resolve()}"'
+        entrypoint_content = entrypoint_content.replace(
+            agent_parent_dir_line,
+            'agent_parent_dir = bundle_dir'
+        )
 
         # Add uvicorn launcher at the end for standalone execution
         uvicorn_launcher = f'''
