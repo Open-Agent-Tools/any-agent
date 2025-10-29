@@ -16,6 +16,23 @@ class TauriProjectGenerator:
         """Initialize the TauriProjectGenerator."""
         self.ui_source_path = Path(__file__).parent.parent / "ui"
 
+    @staticmethod
+    def _sanitize_filename(name: str) -> str:
+        """
+        Sanitize a name for use in filenames.
+
+        Args:
+            name: The name to sanitize
+
+        Returns:
+            Sanitized name safe for filesystem use
+        """
+        # Replace spaces and problematic characters with hyphens
+        sanitized = name.replace(" ", "-").replace("_", "-")
+        # Remove any other potentially problematic characters
+        sanitized = "".join(c for c in sanitized if c.isalnum() or c in ("-", "."))
+        return sanitized
+
     def generate_project(
         self,
         tauri_path: Path,
@@ -139,9 +156,12 @@ class TauriProjectGenerator:
             bundle_output_dir = tauri_path / "src-tauri" / "binaries"
             bundle_output_dir.mkdir(parents=True, exist_ok=True)
 
+            # Sanitize app name for filesystem use
+            safe_app_name = self._sanitize_filename(app_name)
+
             result = bundler.bundle_agent(
                 output_dir=bundle_output_dir,
-                app_name=f"{app_name}-agent",
+                app_name=f"{safe_app_name}-agent",
                 framework=framework,
             )
 
@@ -150,7 +170,7 @@ class TauriProjectGenerator:
 
             # Move executable to resources directory for packaging
             executable_path = Path(result["executable_path"])
-            sidecar_name = f"{app_name}-agent"
+            sidecar_name = f"{safe_app_name}-agent"
 
             # Tauri expects sidecars in the resources directory
             # with platform-specific suffixes
