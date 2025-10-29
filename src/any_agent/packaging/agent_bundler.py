@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from any_agent.core.detector import AgentDetector
+from any_agent.core.framework_detector import FrameworkDetector
 
 
 class AgentBundler:
@@ -20,7 +20,7 @@ class AgentBundler:
             agent_path: Path to the agent directory
         """
         self.agent_path = agent_path.resolve()
-        self.detector = AgentDetector()
+        self.detector = FrameworkDetector()
 
     def bundle_agent(
         self,
@@ -42,8 +42,10 @@ class AgentBundler:
         try:
             # Detect framework if not provided
             if framework is None:
-                detection_result = self.detector.detect_framework(self.agent_path)
-                framework = detection_result["framework"]
+                adapter = self.detector.detect_framework(self.agent_path)
+                if adapter is None:
+                    raise ValueError(f"Could not detect framework in {self.agent_path}")
+                framework = adapter.framework_name
 
             # Create PyInstaller spec file
             spec_file = self._create_pyinstaller_spec(
