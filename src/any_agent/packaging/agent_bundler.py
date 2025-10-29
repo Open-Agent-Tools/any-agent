@@ -361,16 +361,21 @@ exe = EXE(
         dist_dir = output_dir / "dist"
         work_dir = output_dir / "build"
 
+        # Use absolute paths to avoid cwd issues
+        abs_spec_file = spec_file.resolve()
+        abs_dist_dir = dist_dir.resolve()
+        abs_work_dir = work_dir.resolve()
+
         subprocess.run(
             [
                 sys.executable,
                 "-m",
                 "PyInstaller",
-                str(spec_file),
+                str(abs_spec_file),
                 "--distpath",
-                str(dist_dir),
+                str(abs_dist_dir),
                 "--workpath",
-                str(work_dir),
+                str(abs_work_dir),
                 "--noconfirm",
             ],
             check=True,
