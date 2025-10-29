@@ -4,7 +4,10 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+
+from any_agent.core.framework_type import FrameworkType
+from any_agent.packaging.agent_bundler import AgentBundler
 
 
 class TauriProjectGenerator:
@@ -19,6 +22,8 @@ class TauriProjectGenerator:
         tauri_path: Path,
         metadata: Dict[str, str],
         agent_path: Path,
+        bundle_agent: bool = False,
+        framework: Optional[FrameworkType] = None,
     ) -> Dict[str, Any]:
         """
         Generate complete Tauri project structure.
@@ -27,9 +32,11 @@ class TauriProjectGenerator:
             tauri_path: Path where Tauri project will be created
             metadata: Application metadata
             agent_path: Path to the agent directory
+            bundle_agent: If True, bundle the agent as a sidecar executable
+            framework: Framework type (auto-detected if None)
 
         Returns:
-            Dict with success status
+            Dict with success status and optional sidecar_path
         """
         try:
             # Create directory structure
@@ -40,6 +47,19 @@ class TauriProjectGenerator:
             resources_dir = tauri_path / "src-tauri" / "resources"
             placeholder = resources_dir / ".gitkeep"
             placeholder.touch()
+
+            # Bundle agent if requested
+            sidecar_path = None
+            if bundle_agent:
+                sidecar_result = self._bundle_agent_sidecar(
+                    tauri_path, agent_path, metadata["app_name"], framework
+                )
+                if sidecar_result["success"]:
+                    sidecar_path = sidecar_result["sidecar_path"]
+                    metadata["sidecar_path"] = sidecar_path
+                    metadata["sidecar_name"] = sidecar_result["sidecar_name"]
+                else:
+                    return sidecar_result
 
             # Create default icon if none provided
             if not metadata.get("icon_path") or metadata["icon_path"] == "default":
@@ -70,7 +90,11 @@ class TauriProjectGenerator:
             # Generate build script
             self._generate_build_script(tauri_path)
 
-            return {"success": True}
+            result = {"success": True}
+            if sidecar_path:
+                result["sidecar_path"] = sidecar_path
+
+            return result
 
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -88,6 +112,79 @@ class TauriProjectGenerator:
 
         for directory in directories:
             directory.mkdir(parents=True, exist_ok=True)
+
+    def _bundle_agent_sidecar(
+        self,
+        tauri_path: Path,
+        agent_path: Path,
+        app_name: str,
+        framework: Optional[FrameworkType] = None,
+    ) -> Dict[str, Any]:
+        """
+        Bundle the agent as a Tauri sidecar executable.
+
+        Args:
+            tauri_path: Path to the Tauri project
+            agent_path: Path to the agent directory
+            app_name: Name for the application
+            framework: Framework type (auto-detected if None)
+
+        Returns:
+            Dict with success status and sidecar_path
+        """
+        try:
+            # Create bundler
+            bundler = AgentBundler(agent_path)
+
+            # Bundle the agent
+            bundle_output_dir = tauri_path / "src-tauri" / "binaries"
+            bundle_output_dir.mkdir(parents=True, exist_ok=True)
+
+            result = bundler.bundle_agent(
+                output_dir=bundle_output_dir,
+                app_name=f"{app_name}-agent",
+                framework=framework,
+            )
+
+            if not result["success"]:
+                return result
+
+            # Move executable to resources directory for packaging
+            executable_path = Path(result["executable_path"])
+            sidecar_name = f"{app_name}-agent"
+
+            # Tauri expects sidecars in the resources directory
+            # with platform-specific suffixes
+            import platform
+
+            system = platform.system().lower()
+            if system == "darwin":
+                sidecar_filename = f"{sidecar_name}-aarch64-apple-darwin"
+            elif system == "windows":
+                sidecar_filename = f"{sidecar_name}-x86_64-pc-windows-msvc.exe"
+            else:
+                sidecar_filename = f"{sidecar_name}-x86_64-unknown-linux-gnu"
+
+            # Copy to resources
+            resources_dir = tauri_path / "src-tauri" / "resources"
+            sidecar_path = resources_dir / sidecar_filename
+            shutil.copy(executable_path, sidecar_path)
+
+            # Make executable on Unix systems
+            if system != "windows":
+                sidecar_path.chmod(0o755)
+
+            return {
+                "success": True,
+                "sidecar_path": str(sidecar_path),
+                "sidecar_name": sidecar_name,
+            }
+
+        except Exception as bundle_error:
+            return {
+                "success": False,
+                "error": f"Failed to bundle agent sidecar: {str(bundle_error)}",
+            }
 
     def _create_default_icon(self, tauri_path: Path) -> None:
         """Create a minimal default icon for Tauri."""
@@ -246,13 +343,19 @@ if (isTauriEnvironment()) {
         self, tauri_path: Path, metadata: Dict[str, str]
     ) -> None:
         """Generate tauri.conf.json."""
+        # Build sidecar configuration if agent was bundled
+        external_bin = []
+        if metadata.get("sidecar_name"):
+            # Tauri sidecar naming convention
+            external_bin.append(f"binaries/{metadata['sidecar_name']}")
+
         # Build bundle configuration
         bundle_config = {
             "active": True,
             "targets": "all",
             "identifier": f"com.{metadata.get('author', 'anyagent').lower().replace(' ', '').replace('-', '')}.{metadata['app_name'].lower().replace(' ', '').replace('-', '')}",
             "resources": ["resources/*"],
-            "externalBin": [],
+            "externalBin": external_bin,
             "copyright": f"Copyright © {metadata.get('author', 'Any Agent')}",
             "category": "DeveloperTool",
             "shortDescription": metadata["description"],
@@ -318,6 +421,8 @@ if (isTauriEnvironment()) {
                 "shell:default",
                 "shell:allow-open",
                 "shell:allow-spawn",
+                "shell:allow-execute",
+                "shell:allow-kill",
             ],
         }
 
@@ -340,10 +445,44 @@ fn main() {
         with open(main_rs_path, "w") as f:
             f.write(main_rs)
 
-        # lib.rs with Python backend management, window creation, and config management
+        # lib.rs with agent backend management, window creation, and config management
         app_name = metadata["app_name"]
+        sidecar_name = metadata.get("sidecar_name")
+
+        # Generate different backend startup code based on sidecar availability
+        if sidecar_name:
+            backend_setup = f"""
+            // Start agent sidecar
+            use tauri_plugin_shell::ShellExt;
+            let shell = app.shell();
+
+            eprintln!("Starting agent sidecar: {sidecar_name}");
+
+            let sidecar_command = shell
+                .sidecar("{sidecar_name}")
+                .map_err(|e| {{
+                    eprintln!("Failed to create sidecar command: {{}}", e);
+                    e
+                }})?;
+
+            let (_rx, _child) = sidecar_command.spawn()
+                .map_err(|e| {{
+                    eprintln!("Failed to spawn sidecar: {{}}", e);
+                    e
+                }})?;
+
+            eprintln!("Agent sidecar started successfully");
+
+            // Note: The sidecar will be automatically terminated when the app closes
+"""
+        else:
+            backend_setup = """
+            // No bundled agent - UI only mode
+            eprintln!("Running in UI-only mode (no bundled agent)");
+            eprintln!("Connect to an external agent or run the agent separately");
+"""
+
         lib_rs = f"""// Tauri v2 application library
-use std::process::{{Command, Stdio}};
 use std::fs;
 use std::path::PathBuf;
 use tauri::{{Manager, WebviewWindowBuilder, WebviewUrl}};
@@ -457,24 +596,7 @@ pub fn run() {{
                 e
             }})?;
 
-            // Start Python backend as a separate process
-            // The Python script will find its own port and communicate it
-            let resource_dir = app.path()
-                .resource_dir()
-                .expect("failed to resolve resource dir");
-
-            let python_script = resource_dir.join("python-runtime/run_agent.py");
-            let venv_python = resource_dir.join("python-runtime/venv/bin/python");
-
-            // Try to start Python backend
-            let _child = Command::new(&venv_python)
-                .arg(&python_script)
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn();
-
-            // Note: We don't wait for the Python process here.
-            // The React UI will poll for the backend to be ready.
+            {backend_setup}
 
             Ok(())
         }})

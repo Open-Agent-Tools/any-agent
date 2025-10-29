@@ -1,0 +1,398 @@
+"""Agent bundler using PyInstaller for creating standalone executables."""
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from any_agent.core.detector import AgentDetector
+from any_agent.core.framework_type import FrameworkType
+
+
+class AgentBundler:
+    """Bundles Python agents into standalone executables using PyInstaller."""
+
+    def __init__(self, agent_path: Path) -> None:
+        """
+        Initialize the AgentBundler.
+
+        Args:
+            agent_path: Path to the agent directory
+        """
+        self.agent_path = agent_path.resolve()
+        self.detector = AgentDetector()
+
+    def bundle_agent(
+        self,
+        output_dir: Path,
+        app_name: str,
+        framework: Optional[FrameworkType] = None,
+    ) -> Dict[str, Any]:
+        """
+        Bundle agent into a standalone executable.
+
+        Args:
+            output_dir: Directory where bundled executable will be created
+            app_name: Name for the executable
+            framework: Framework type (auto-detected if None)
+
+        Returns:
+            Dict with success status and executable path
+        """
+        try:
+            # Detect framework if not provided
+            if framework is None:
+                detection_result = self.detector.detect_framework(self.agent_path)
+                framework = detection_result.framework
+
+            # Create PyInstaller spec file
+            spec_file = self._create_pyinstaller_spec(
+                output_dir, app_name, framework
+            )
+
+            # Run PyInstaller
+            executable_path = self._run_pyinstaller(spec_file, output_dir)
+
+            return {
+                "success": True,
+                "executable_path": str(executable_path),
+                "framework": framework.value,
+            }
+
+        except Exception as bundle_error:
+            return {
+                "success": False,
+                "error": str(bundle_error),
+            }
+
+    def _create_pyinstaller_spec(
+        self,
+        output_dir: Path,
+        app_name: str,
+        framework: FrameworkType,
+    ) -> Path:
+        """
+        Create PyInstaller spec file for the agent.
+
+        Args:
+            output_dir: Output directory for the spec file
+            app_name: Name for the application
+            framework: Framework type
+
+        Returns:
+            Path to the created spec file
+        """
+        # Find the main entry point
+        entry_point = self._find_entry_point(framework)
+
+        # Collect framework-specific hidden imports and data files
+        hidden_imports = self._get_hidden_imports(framework)
+        datas = self._get_data_files(framework)
+
+        # Create spec file content
+        spec_content = f'''# -*- mode: python ; coding: utf-8 -*-
+
+# PyInstaller spec file for {app_name}
+# Framework: {framework.value}
+
+import sys
+from pathlib import Path
+
+block_cipher = None
+
+# Agent source directory
+agent_path = Path(r"{self.agent_path}")
+
+# Collect all Python files from agent directory
+agent_files = []
+for py_file in agent_path.rglob("*.py"):
+    if "__pycache__" not in str(py_file):
+        agent_files.append((str(py_file), str(py_file.parent.relative_to(agent_path.parent))))
+
+a = Analysis(
+    [r"{entry_point}"],
+    pathex=[r"{self.agent_path.parent}"],
+    binaries=[],
+    datas=agent_files + {datas},
+    hiddenimports={hidden_imports},
+    hookspath=[],
+    hooksconfig={{}},
+    runtime_hooks=[],
+    excludes=[],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name='{app_name}',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)
+'''
+
+        spec_file = output_dir / f"{app_name}.spec"
+        spec_file.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(spec_file, "w") as f:
+            f.write(spec_content)
+
+        return spec_file
+
+    def _find_entry_point(self, framework: FrameworkType) -> Path:
+        """
+        Find the main entry point for the agent.
+
+        Args:
+            framework: Framework type
+
+        Returns:
+            Path to the entry point file
+        """
+        # Common entry point patterns by framework
+        if framework == FrameworkType.GOOGLE_ADK:
+            # Look for main.py or agent.py
+            candidates = [
+                self.agent_path / "main.py",
+                self.agent_path / "agent.py",
+                self.agent_path / "app.py",
+            ]
+        elif framework == FrameworkType.AWS_STRANDS:
+            candidates = [
+                self.agent_path / "agent.py",
+                self.agent_path / "main.py",
+                self.agent_path / "app.py",
+            ]
+        elif framework in (
+            FrameworkType.LANGCHAIN,
+            FrameworkType.LANGGRAPH,
+            FrameworkType.CREWAI,
+        ):
+            candidates = [
+                self.agent_path / "main.py",
+                self.agent_path / "app.py",
+                self.agent_path / "agent.py",
+            ]
+        else:
+            candidates = [
+                self.agent_path / "main.py",
+                self.agent_path / "app.py",
+            ]
+
+        # Find first existing candidate
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+
+        # If no standard entry point found, look for any main.py
+        for py_file in self.agent_path.rglob("main.py"):
+            if "__pycache__" not in str(py_file):
+                return py_file
+
+        raise FileNotFoundError(
+            f"Could not find entry point for {framework.value} agent in {self.agent_path}"
+        )
+
+    def _get_hidden_imports(self, framework: FrameworkType) -> List[str]:
+        """
+        Get list of hidden imports needed for PyInstaller.
+
+        Args:
+            framework: Framework type
+
+        Returns:
+            List of module names to include as hidden imports
+        """
+        common_imports = [
+            "asyncio",
+            "json",
+            "typing",
+            "pathlib",
+        ]
+
+        framework_imports = {
+            FrameworkType.GOOGLE_ADK: [
+                "google",
+                "google.genai",
+                "google.genai.types",
+                "google.api_core",
+                "google.auth",
+                "aiohttp",
+                "fastapi",
+                "uvicorn",
+                "pydantic",
+            ],
+            FrameworkType.AWS_STRANDS: [
+                "anthropic",
+                "boto3",
+                "botocore",
+                "fastapi",
+                "uvicorn",
+                "pydantic",
+            ],
+            FrameworkType.LANGCHAIN: [
+                "langchain",
+                "langchain_core",
+                "langchain_openai",
+                "openai",
+                "fastapi",
+                "uvicorn",
+            ],
+            FrameworkType.LANGGRAPH: [
+                "langgraph",
+                "langchain",
+                "langchain_core",
+                "fastapi",
+                "uvicorn",
+            ],
+            FrameworkType.CREWAI: [
+                "crewai",
+                "langchain",
+                "openai",
+                "fastapi",
+                "uvicorn",
+            ],
+        }
+
+        return common_imports + framework_imports.get(framework, [])
+
+    def _get_data_files(self, framework: FrameworkType) -> List[tuple]:
+        """
+        Get list of data files to include in the bundle.
+
+        Args:
+            framework: Framework type
+
+        Returns:
+            List of (source, dest) tuples for data files
+        """
+        data_files = []
+
+        # Include common config files
+        for pattern in ["*.yaml", "*.yml", "*.json", "*.env.example"]:
+            for config_file in self.agent_path.glob(pattern):
+                if config_file.name != ".env":  # Never include .env
+                    data_files.append(
+                        (str(config_file), str(config_file.relative_to(self.agent_path.parent)))
+                    )
+
+        # Framework-specific data files
+        if framework == FrameworkType.GOOGLE_ADK:
+            # Include ADK config files
+            for adk_file in self.agent_path.rglob("*.adk"):
+                data_files.append(
+                    (str(adk_file), str(adk_file.relative_to(self.agent_path.parent)))
+                )
+
+        return data_files
+
+    def _run_pyinstaller(self, spec_file: Path, output_dir: Path) -> Path:
+        """
+        Run PyInstaller to create the executable.
+
+        Args:
+            spec_file: Path to the PyInstaller spec file
+            output_dir: Output directory for the executable
+
+        Returns:
+            Path to the created executable
+
+        Raises:
+            subprocess.CalledProcessError: If PyInstaller fails
+        """
+        # Ensure PyInstaller is available
+        try:
+            subprocess.run(
+                [sys.executable, "-m", "pip", "show", "pyinstaller"],
+                check=True,
+                capture_output=True,
+            )
+        except subprocess.CalledProcessError:
+            # Install PyInstaller if not available
+            subprocess.run(
+                [sys.executable, "-m", "pip", "install", "pyinstaller"],
+                check=True,
+            )
+
+        # Run PyInstaller
+        dist_dir = output_dir / "dist"
+        work_dir = output_dir / "build"
+
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "PyInstaller",
+                str(spec_file),
+                "--distpath",
+                str(dist_dir),
+                "--workpath",
+                str(work_dir),
+                "--noconfirm",
+            ],
+            check=True,
+            cwd=self.agent_path,
+        )
+
+        # Find the created executable
+        app_name = spec_file.stem
+        executable = dist_dir / app_name
+
+        if not executable.exists():
+            raise FileNotFoundError(
+                f"PyInstaller completed but executable not found at {executable}"
+            )
+
+        return executable
+
+    def create_wrapper_script(
+        self,
+        executable_path: Path,
+        wrapper_path: Path,
+        port: int = 8080,
+    ) -> None:
+        """
+        Create a wrapper script that starts the agent with proper environment.
+
+        Args:
+            executable_path: Path to the bundled executable
+            wrapper_path: Path where wrapper script will be created
+            port: Port for the agent to listen on
+        """
+        wrapper_content = f'''#!/bin/bash
+# Wrapper script for {executable_path.name}
+
+# Set environment variables
+export PORT={port}
+export HOST=0.0.0.0
+
+# Run the agent executable
+exec "{executable_path}" "$@"
+'''
+
+        wrapper_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(wrapper_path, "w") as f:
+            f.write(wrapper_content)
+
+        # Make executable
+        wrapper_path.chmod(0o755)
