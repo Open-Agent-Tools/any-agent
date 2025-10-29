@@ -74,34 +74,20 @@ class MacAppPackager:
             if not framework_result["success"]:
                 return framework_result
 
-            # 5. Create Tauri project structure
+            # 5. Create Tauri project structure with bundled agent sidecar
             if verbose:
                 click.echo("\n🏗️  Creating Tauri project structure...")
+                click.echo("📦 Bundling agent as standalone executable with PyInstaller...")
             tauri_result = self._create_tauri_project(
                 agent_path, metadata, framework_result
             )
             if not tauri_result["success"]:
                 return tauri_result
 
-            # 6. Bundle Python runtime and dependencies
-            if verbose:
-                click.echo("\n🐍 Bundling Python runtime and dependencies...")
-            python_result = self._bundle_python_runtime(
-                agent_path, tauri_result["tauri_path"], verbose
-            )
-            if not python_result["success"]:
-                return python_result
+            # Note: Python bundling and entrypoint generation are now handled
+            # by the PyInstaller sidecar approach in _create_tauri_project
 
-            # 7. Generate run_agent.py entrypoint
-            if verbose:
-                click.echo("\n📜 Generating custom entrypoint script...")
-            entrypoint_result = self._generate_entrypoint(
-                agent_path, tauri_result["tauri_path"], framework_result
-            )
-            if not entrypoint_result["success"]:
-                return entrypoint_result
-
-            # 8. Build or test
+            # 6. Build or test
             if test_mode:
                 if verbose:
                     click.echo("\n🧪 Running packaged app in test mode...")
@@ -353,9 +339,15 @@ class MacAppPackager:
         with open(manifest_path, "w") as f:
             json.dump(metadata, f, indent=2)
 
-        # Generate Tauri project
+        # Generate Tauri project with bundled agent sidecar
         generator = TauriProjectGenerator()
-        result = generator.generate_project(tauri_path, metadata, agent_path)
+        result = generator.generate_project(
+            tauri_path=tauri_path,
+            metadata=metadata,
+            agent_path=agent_path,
+            bundle_agent=True,  # Enable PyInstaller sidecar
+            framework=framework_result["framework"],
+        )
 
         if not result["success"]:
             return result
