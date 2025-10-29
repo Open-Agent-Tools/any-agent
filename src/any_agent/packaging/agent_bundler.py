@@ -240,14 +240,17 @@ if __name__ == "__main__":
 
         full_entrypoint = entrypoint_content + uvicorn_launcher
 
-        # Save entrypoint to output directory
-        entrypoint_file = output_dir / "a2a_entrypoint.py"
-        entrypoint_file.parent.mkdir(parents=True, exist_ok=True)
+        # Save entrypoint in the agent directory (accessible to PyInstaller)
+        # Create a temp directory for build artifacts
+        temp_build_dir = self.agent_path / ".any_agent_build"
+        temp_build_dir.mkdir(parents=True, exist_ok=True)
 
+        entrypoint_file = temp_build_dir / "a2a_entrypoint.py"
         with open(entrypoint_file, "w") as f:
             f.write(full_entrypoint)
 
-        return entrypoint_file
+        # Return absolute path
+        return entrypoint_file.resolve()
 
     def _get_hidden_imports(self, framework: str) -> List[str]:
         """
