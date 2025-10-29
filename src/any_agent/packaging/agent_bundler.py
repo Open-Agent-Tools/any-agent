@@ -267,12 +267,11 @@ if __name__ == "__main__":
 
         full_entrypoint = entrypoint_content + uvicorn_launcher
 
-        # Save entrypoint in the agent directory (accessible to PyInstaller)
-        # Create a temp directory for build artifacts
-        temp_build_dir = self.agent_path / ".any_agent_build"
-        temp_build_dir.mkdir(parents=True, exist_ok=True)
+        # Save entrypoint in the build output directory (not in agent source)
+        # This avoids modifying the agent's directory (especially for examples/)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-        entrypoint_file = temp_build_dir / "a2a_entrypoint.py"
+        entrypoint_file = output_dir / "a2a_entrypoint.py"
         with open(entrypoint_file, "w") as f:
             f.write(full_entrypoint)
 
