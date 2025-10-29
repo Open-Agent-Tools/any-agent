@@ -170,21 +170,24 @@ exe = EXE(
         Returns:
             Path to the entry point file
         """
+        # Normalize framework name for comparison
+        framework_normalized = framework.lower().replace("_", "").replace("-", "")
+
         # Common entry point patterns by framework
-        if framework.lower() in ("google_adk", "adk"):
+        if framework_normalized in ("googleadk", "adk"):
             # Look for main.py or agent.py
             candidates = [
                 self.agent_path / "main.py",
                 self.agent_path / "agent.py",
                 self.agent_path / "app.py",
             ]
-        elif framework.lower() in ("aws_strands", "strands"):
+        elif framework_normalized in ("awsstrands", "strands"):
             candidates = [
                 self.agent_path / "agent.py",
                 self.agent_path / "main.py",
                 self.agent_path / "app.py",
             ]
-        elif framework.lower() in ("langchain", "langgraph", "crewai"):
+        elif framework_normalized in ("langchain", "langgraph", "crewai"):
             candidates = [
                 self.agent_path / "main.py",
                 self.agent_path / "app.py",
@@ -227,10 +230,11 @@ exe = EXE(
             "pathlib",
         ]
 
-        framework_key = framework.lower() if framework else ""
+        # Normalize framework name for comparison
+        framework_key = framework.lower().replace("_", "").replace("-", "") if framework else ""
 
         framework_imports = {
-            "google_adk": [
+            "googleadk": [
                 "google",
                 "google.genai",
                 "google.genai.types",
@@ -252,7 +256,7 @@ exe = EXE(
                 "uvicorn",
                 "pydantic",
             ],
-            "aws_strands": [
+            "awsstrands": [
                 "anthropic",
                 "boto3",
                 "botocore",
@@ -315,7 +319,8 @@ exe = EXE(
                     )
 
         # Framework-specific data files
-        if framework.lower() in ("google_adk", "adk"):
+        framework_normalized = framework.lower().replace("_", "").replace("-", "")
+        if framework_normalized in ("googleadk", "adk"):
             # Include ADK config files
             for adk_file in self.agent_path.rglob("*.adk"):
                 data_files.append(
