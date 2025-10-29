@@ -346,14 +346,14 @@ exe = EXE(
         # Ensure PyInstaller is available
         try:
             subprocess.run(
-                [sys.executable, "-m", "pip", "show", "pyinstaller"],
+                ["uv", "pip", "show", "pyinstaller"],
                 check=True,
                 capture_output=True,
             )
         except subprocess.CalledProcessError:
             # Install PyInstaller if not available
             subprocess.run(
-                [sys.executable, "-m", "pip", "install", "pyinstaller"],
+                ["uv", "pip", "install", "pyinstaller"],
                 check=True,
             )
 
