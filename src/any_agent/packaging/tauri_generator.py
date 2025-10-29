@@ -193,9 +193,10 @@ class TauriProjectGenerator:
                 else:
                     sidecar_filename = f"{sidecar_name}-x86_64-unknown-linux-gnu"
 
-            # Copy to resources
-            resources_dir = tauri_path / "src-tauri" / "resources"
-            sidecar_path = resources_dir / sidecar_filename
+            # Copy to binaries directory for Tauri sidecar
+            binaries_dir = tauri_path / "src-tauri" / "binaries"
+            binaries_dir.mkdir(parents=True, exist_ok=True)
+            sidecar_path = binaries_dir / sidecar_filename
             shutil.copy(executable_path, sidecar_path)
 
             # Make executable on Unix systems
