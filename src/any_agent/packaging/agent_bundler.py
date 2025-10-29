@@ -224,6 +224,64 @@ if getattr(sys, 'frozen', False):
 else:
     # Running in development
     bundle_dir = os.path.dirname(os.path.abspath(__file__))
+
+
+def filter_tools_for_bundle(agent):
+    \"\"\"Remove tools with external dependencies from agent when running in PyInstaller bundle.
+
+    Tools that require external connections (MCP servers, databases, APIs) can cause
+    timeouts during A2A card building. This function creates a copy of the agent
+    with only tools that work in isolated environments.
+    \"\"\"
+    if not getattr(sys, 'frozen', False):
+        # Not in bundle, return agent unchanged
+        return agent
+
+    # Import here to avoid issues if google.adk not available
+    try:
+        from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset
+    except ImportError:
+        # If can't import, just return agent unchanged
+        return agent
+
+    # Filter out problematic tool types
+    problematic_types = (MCPToolset,)
+
+    if not hasattr(agent, 'tools') or not agent.tools:
+        return agent
+
+    # Create filtered tools list
+    filtered_tools = []
+    removed_tools = []
+
+    for tool in agent.tools:
+        # Check if tool is a problematic type
+        is_problematic = isinstance(tool, problematic_types)
+
+        if is_problematic:
+            removed_tools.append(type(tool).__name__)
+        else:
+            filtered_tools.append(tool)
+
+    if removed_tools:
+        logger.info(f"PyInstaller bundle: Filtered out tools with external dependencies: {{', '.join(removed_tools)}}")
+        logger.info(f"PyInstaller bundle: Keeping {{len(filtered_tools)}} local tools")
+
+    # Create new agent with filtered tools
+    # We need to recreate the agent with the filtered tool list
+    try:
+        from google.adk.agents import Agent
+        filtered_agent = Agent(
+            model=agent.model if hasattr(agent, 'model') else None,
+            name=agent.name if hasattr(agent, 'name') else 'Agent',
+            instruction=agent.instruction if hasattr(agent, 'instruction') else '',
+            description=agent.description if hasattr(agent, 'description') else '',
+            tools=filtered_tools,
+        )
+        return filtered_agent
+    except Exception as filter_error:
+        logger.warning(f"Could not filter agent tools: {{filter_error}}, using original agent")
+        return agent
 """
 
         # Insert PyInstaller loader after imports
@@ -238,6 +296,18 @@ else:
         entrypoint_content = entrypoint_content.replace(
             agent_parent_dir_line,
             'agent_parent_dir = bundle_dir'
+        )
+
+        # Inject tool filtering after agent load
+        # Pattern: root_agent = load_agent() followed by logger.info
+        agent_load_pattern = '''root_agent = load_agent()
+    logger.info(f"✅ Loaded ADK agent: {root_agent}")'''
+        agent_load_with_filter = '''root_agent = load_agent()
+    root_agent = filter_tools_for_bundle(root_agent)
+    logger.info(f"✅ Loaded ADK agent: {root_agent}")'''
+        entrypoint_content = entrypoint_content.replace(
+            agent_load_pattern,
+            agent_load_with_filter
         )
 
         # Replace the existing __main__ block with an enhanced one for PyInstaller
