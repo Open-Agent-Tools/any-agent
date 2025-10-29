@@ -177,12 +177,21 @@ class TauriProjectGenerator:
             import platform
 
             system = platform.system().lower()
+            machine = platform.machine().lower()
+
+            # Determine platform-specific sidecar filename
             if system == "darwin":
-                sidecar_filename = f"{sidecar_name}-aarch64-apple-darwin"
+                if machine in ("arm64", "aarch64"):
+                    sidecar_filename = f"{sidecar_name}-aarch64-apple-darwin"
+                else:  # x86_64
+                    sidecar_filename = f"{sidecar_name}-x86_64-apple-darwin"
             elif system == "windows":
                 sidecar_filename = f"{sidecar_name}-x86_64-pc-windows-msvc.exe"
-            else:
-                sidecar_filename = f"{sidecar_name}-x86_64-unknown-linux-gnu"
+            else:  # Linux
+                if machine in ("aarch64", "arm64"):
+                    sidecar_filename = f"{sidecar_name}-aarch64-unknown-linux-gnu"
+                else:
+                    sidecar_filename = f"{sidecar_name}-x86_64-unknown-linux-gnu"
 
             # Copy to resources
             resources_dir = tauri_path / "src-tauri" / "resources"
