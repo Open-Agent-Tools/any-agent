@@ -7,6 +7,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from any_agent.core.framework_detector import FrameworkDetector
+from any_agent.shared.entrypoint_templates import (
+    UnifiedEntrypointGenerator,
+    EntrypointContext,
+)
 
 
 class AgentBundler:
@@ -21,6 +25,7 @@ class AgentBundler:
         """
         self.agent_path = agent_path.resolve()
         self.detector = FrameworkDetector()
+        self.entrypoint_generator = UnifiedEntrypointGenerator()
 
     def bundle_agent(
         self,
@@ -84,8 +89,8 @@ class AgentBundler:
         Returns:
             Path to the created spec file
         """
-        # Find the main entry point
-        entry_point = self._find_entry_point(framework)
+        # Generate A2A entrypoint for the agent
+        entry_point = self._generate_a2a_entrypoint(output_dir, framework)
 
         # Collect framework-specific hidden imports and data files
         hidden_imports = self._get_hidden_imports(framework)
@@ -160,58 +165,89 @@ exe = EXE(
 
         return spec_file
 
-    def _find_entry_point(self, framework: str) -> Path:
+    def _generate_a2a_entrypoint(
+        self, output_dir: Path, framework: str, port: int = 8035
+    ) -> Path:
         """
-        Find the main entry point for the agent.
+        Generate an A2A server entrypoint for the agent.
 
         Args:
+            output_dir: Directory where entrypoint will be created
             framework: Framework type string
+            port: Port for A2A server (default: 8035 for Google ADK)
 
         Returns:
-            Path to the entry point file
+            Path to the generated entrypoint file
         """
-        # Normalize framework name for comparison
-        framework_normalized = framework.lower().replace("_", "").replace("-", "")
+        # Map framework names to entrypoint generator format
+        framework_map = {
+            "GoogleADK": "google_adk",
+            "AWSStrands": "aws_strands",
+            "LangChain": "langchain",
+            "LangGraph": "langgraph",
+            "CrewAI": "crewai",
+        }
 
-        # Common entry point patterns by framework
-        if framework_normalized in ("googleadk", "adk"):
-            # Look for main.py or agent.py
-            candidates = [
-                self.agent_path / "main.py",
-                self.agent_path / "agent.py",
-                self.agent_path / "app.py",
-            ]
-        elif framework_normalized in ("awsstrands", "strands"):
-            candidates = [
-                self.agent_path / "agent.py",
-                self.agent_path / "main.py",
-                self.agent_path / "app.py",
-            ]
-        elif framework_normalized in ("langchain", "langgraph", "crewai"):
-            candidates = [
-                self.agent_path / "main.py",
-                self.agent_path / "app.py",
-                self.agent_path / "agent.py",
-            ]
-        else:
-            candidates = [
-                self.agent_path / "main.py",
-                self.agent_path / "app.py",
-            ]
+        # Normalize framework name
+        framework_key = framework_map.get(framework, framework.lower())
 
-        # Find first existing candidate
-        for candidate in candidates:
-            if candidate.exists():
-                return candidate
+        # Set framework-specific default ports
+        port_map = {
+            "google_adk": 8035,
+            "aws_strands": 8045,
+            "langchain": 8055,
+            "langgraph": 8065,
+            "crewai": 8075,
+        }
+        port = port_map.get(framework_key, 8080)
 
-        # If no standard entry point found, look for any main.py
-        for py_file in self.agent_path.rglob("main.py"):
-            if "__pycache__" not in str(py_file):
-                return py_file
-
-        raise FileNotFoundError(
-            f"Could not find entry point for {framework} agent in {self.agent_path}"
+        # Generate A2A entrypoint using the unified generator
+        context = EntrypointContext(
+            agent_name=self.agent_path.name,
+            agent_path=self.agent_path,
+            framework=framework_key,
+            port=port,
+            add_ui=False,  # No UI for sidecar
+            deployment_type="sidecar",  # Custom deployment type for bundling
         )
+
+        entrypoint_content = self.entrypoint_generator.generate_entrypoint(context)
+
+        # Add uvicorn launcher at the end for standalone execution
+        uvicorn_launcher = f'''
+
+if __name__ == "__main__":
+    import uvicorn
+    import sys
+
+    # Parse port from command line or use default
+    port = {port}
+    if len(sys.argv) > 1:
+        try:
+            port = int(sys.argv[1])
+        except ValueError:
+            print(f"Invalid port: {{sys.argv[1]}}, using default: {port}")
+
+    # Start uvicorn server
+    print(f"Starting A2A server on port {{port}}...")
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=port,
+        log_level="info",
+    )
+'''
+
+        full_entrypoint = entrypoint_content + uvicorn_launcher
+
+        # Save entrypoint to output directory
+        entrypoint_file = output_dir / "a2a_entrypoint.py"
+        entrypoint_file.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(entrypoint_file, "w") as f:
+            f.write(full_entrypoint)
+
+        return entrypoint_file
 
     def _get_hidden_imports(self, framework: str) -> List[str]:
         """
@@ -240,10 +276,21 @@ exe = EXE(
                 "google.genai.types",
                 "google.api_core",
                 "google.auth",
+                "google.adk",
+                "google.adk.a2a",
+                "google.adk.a2a.utils",
+                "google.adk.a2a.utils.agent_to_a2a",
                 "aiohttp",
                 "fastapi",
+                "starlette",
+                "starlette.responses",
+                "starlette.routing",
                 "uvicorn",
+                "uvicorn.logging",
+                "uvicorn.protocols",
                 "pydantic",
+                "a2a",
+                "a2a.server",
             ],
             "adk": [
                 "google",
@@ -251,10 +298,21 @@ exe = EXE(
                 "google.genai.types",
                 "google.api_core",
                 "google.auth",
+                "google.adk",
+                "google.adk.a2a",
+                "google.adk.a2a.utils",
+                "google.adk.a2a.utils.agent_to_a2a",
                 "aiohttp",
                 "fastapi",
+                "starlette",
+                "starlette.responses",
+                "starlette.routing",
                 "uvicorn",
+                "uvicorn.logging",
+                "uvicorn.protocols",
                 "pydantic",
+                "a2a",
+                "a2a.server",
             ],
             "awsstrands": [
                 "anthropic",
