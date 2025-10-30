@@ -30,10 +30,12 @@ const AppContent: React.FC = () => {
   // Initialize Tauri backend and check for first-run setup
   useEffect(() => {
     const initializeTauriAndCheckSetup = async () => {
+      console.log('[App.tsx] Step 1: Starting initialization');
+
       // Improved Tauri detection
       const tauri = typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window);
 
-      console.log('Tauri mode check:', {
+      console.log('[App.tsx] Step 2: Tauri mode check:', {
         tauri,
         hasTauriGlobal: typeof window !== 'undefined' && '__TAURI__' in window,
         hasTauriInternals: typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window,
@@ -41,35 +43,51 @@ const AppContent: React.FC = () => {
       });
 
       setIsTauriMode(tauri);
+      console.log('[App.tsx] Step 3: Set Tauri mode to:', tauri);
 
       // Initialize Tauri backend if in Tauri mode
       if (tauri) {
         try {
-          console.log('Initializing Tauri backend...');
+          console.log('[App.tsx] Step 4: In Tauri mode, importing adapter...');
           // Dynamically import and initialize Tauri adapter
-          const { initializeTauriBackend } = await import('@/utils/tauri_api_adapter');
-          const port = await initializeTauriBackend();
-          console.log('Tauri backend initialized on port:', port);
+          const tauriAdapter = await import('@/utils/tauri_api_adapter');
+          console.log('[App.tsx] Step 5: Tauri adapter imported successfully, calling initializeTauriBackend()...');
+
+          const port = await tauriAdapter.initializeTauriBackend();
+          console.log('[App.tsx] Step 6: Tauri backend initialized successfully on port:', port);
 
           // Check for first-run setup
+          console.log('[App.tsx] Step 7: Checking if config exists...');
           const configExists = await ConfigManager.configExists();
-          console.log('Config exists:', configExists);
+          console.log('[App.tsx] Step 8: Config exists:', configExists);
 
           if (!configExists) {
-            console.log('First run detected - showing setup wizard');
+            console.log('[App.tsx] Step 9: First run detected - showing setup wizard');
             setShowSetupWizard(true);
+          } else {
+            console.log('[App.tsx] Step 9: Config exists, skipping setup wizard');
           }
         } catch (error) {
-          console.error('Error initializing Tauri backend or checking config:', error);
+          console.error('[App.tsx] ERROR in Tauri initialization or config check:', error);
+          console.error('[App.tsx] Error details:', {
+            name: error instanceof Error ? error.name : 'Unknown',
+            message: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+          });
+          // Even if initialization fails, mark backend as ready to avoid infinite loading
+          console.log('[App.tsx] Proceeding despite error to avoid freeze');
         }
       } else {
-        console.log('Not in Tauri mode - skipping backend initialization and setup wizard check');
+        console.log('[App.tsx] Step 4: Not in Tauri mode - skipping backend initialization and setup wizard check');
       }
 
       // Mark backend as ready (either Tauri initialized or web mode)
+      console.log('[App.tsx] Step 10: Setting backend ready to true');
       setBackendReady(true);
+      console.log('[App.tsx] Step 11: Backend ready state updated');
     };
 
+    console.log('[App.tsx] Calling initializeTauriAndCheckSetup()');
     initializeTauriAndCheckSetup();
   }, []);
 
@@ -106,22 +124,31 @@ const AppContent: React.FC = () => {
   });
 
   useEffect(() => {
+    console.log('[App.tsx] Metadata fetch useEffect triggered, backendReady:', backendReady);
+
     // Only fetch agent metadata after backend is ready
     if (!backendReady) {
-      console.log('Waiting for backend to be ready before fetching metadata...');
+      console.log('[App.tsx] Waiting for backend to be ready before fetching metadata...');
       return;
     }
 
     const fetchAgentMetadata = async () => {
       try {
-        console.log('Backend ready, fetching agent metadata...');
+        console.log('[App.tsx] Backend ready, fetching agent metadata from API...');
         const metadata = await api.getAgentCard();
-        console.log('Agent metadata fetched:', metadata);
+        console.log('[App.tsx] Agent metadata fetched successfully:', metadata);
         setAgentMetadata(metadata);
+        console.log('[App.tsx] Agent metadata state updated');
       } catch (error) {
-        console.error('Failed to load agent metadata:', error);
+        console.error('[App.tsx] Failed to load agent metadata:', error);
+        console.error('[App.tsx] Error details:', {
+          name: error instanceof Error ? error.name : 'Unknown',
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        });
         setError(error as Error);
         // Set fallback metadata
+        console.log('[App.tsx] Setting fallback metadata');
         setAgentMetadata({
           name: 'Unknown Agent',
           framework: 'unknown',
@@ -130,11 +157,13 @@ const AppContent: React.FC = () => {
           status: 'active',
         });
       } finally {
+        console.log('[App.tsx] Setting isLoading to false');
         setIsLoading(false);
-        console.log('Loading complete');
+        console.log('[App.tsx] Loading complete, app should render now');
       }
     };
 
+    console.log('[App.tsx] Calling fetchAgentMetadata()');
     fetchAgentMetadata();
   }, [backendReady]);
 
