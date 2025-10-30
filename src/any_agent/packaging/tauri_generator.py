@@ -519,8 +519,9 @@ fn main() {
         # Generate different backend startup code based on sidecar availability
         if sidecar_name:
             backend_setup = f"""
-            // Start agent sidecar and manage its lifecycle
+            // Start agent sidecar and manage its lifecycle with explicit cleanup
             use tauri_plugin_shell::ShellExt;
+            use std::sync::{{Arc, Mutex}};
             let shell = app.shell();
 
             eprintln!("Starting agent sidecar: {sidecar_name}");
@@ -538,11 +539,54 @@ fn main() {
                     e
                 }})?;
 
-            // Store child process handle in app state to keep it alive
-            // When app exits, Tauri will drop this state and kill the process
-            app.manage(child);
+            // Get the process ID for explicit cleanup
+            let pid = child.pid();
+            eprintln!("Agent sidecar started successfully with PID: {{}}", pid);
 
-            eprintln!("Agent sidecar started successfully");
+            // Store child process handle in app state
+            let child_handle = Arc::new(Mutex::new(Some(child)));
+            app.manage(child_handle.clone());
+
+            // Register cleanup handler to ensure process is killed on app exit
+            let app_handle = app.handle().clone();
+            app.on_exit(move |_| {{
+                eprintln!("App exiting, cleaning up sidecar process...");
+
+                // Kill the sidecar process explicitly
+                if let Ok(mut child_guard) = child_handle.lock() {{
+                    if let Some(mut child_proc) = child_guard.take() {{
+                        eprintln!("Attempting to kill sidecar process (PID: {{}})...", pid);
+
+                        // Try graceful kill first
+                        match child_proc.kill() {{
+                            Ok(_) => {{
+                                eprintln!("Successfully sent kill signal to sidecar");
+                                // Give it a moment to terminate
+                                std::thread::sleep(std::time::Duration::from_millis(500));
+                            }},
+                            Err(e) => {{
+                                eprintln!("Failed to kill sidecar gracefully: {{}}", e);
+                            }}
+                        }}
+
+                        // Force kill with SIGKILL on Unix platforms as fallback
+                        #[cfg(unix)]
+                        {{
+                            use std::process::Command;
+                            eprintln!("Sending SIGKILL to PID {{}} as fallback...", pid);
+                            let _ = Command::new("kill")
+                                .args(["-9", &pid.to_string()])
+                                .output();
+                        }}
+                    }}
+                }} else {{
+                    eprintln!("Failed to acquire lock on child process");
+                }}
+
+                eprintln!("Sidecar cleanup complete");
+            }});
+
+            eprintln!("Cleanup handler registered for sidecar process");
 """
         else:
             backend_setup = """
