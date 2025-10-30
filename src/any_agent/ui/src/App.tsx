@@ -19,6 +19,7 @@ const AppContent: React.FC = () => {
   const [error, setError] = useState<Error | null>(null);
   const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [isTauriMode, setIsTauriMode] = useState(false);
+  const [backendReady, setBackendReady] = useState(false);
 
   console.log('App component initializing');
   console.log('Current URL:', window.location.href);
@@ -26,9 +27,9 @@ const AppContent: React.FC = () => {
   console.log('Location from useLocation:', location.pathname);
   console.log('UI Build timestamp: 2025-01-19T18:15:00Z - Router Bypass Fix v0.2.5');
 
-  // Check for first-run setup (Tauri mode only)
+  // Initialize Tauri backend and check for first-run setup
   useEffect(() => {
-    const checkFirstRun = async () => {
+    const initializeTauriAndCheckSetup = async () => {
       // Improved Tauri detection
       const tauri = typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window);
 
@@ -41,8 +42,16 @@ const AppContent: React.FC = () => {
 
       setIsTauriMode(tauri);
 
+      // Initialize Tauri backend if in Tauri mode
       if (tauri) {
         try {
+          console.log('Initializing Tauri backend...');
+          // Dynamically import and initialize Tauri adapter
+          const { initializeTauriBackend } = await import('@/utils/tauri_api_adapter');
+          const port = await initializeTauriBackend();
+          console.log('Tauri backend initialized on port:', port);
+
+          // Check for first-run setup
           const configExists = await ConfigManager.configExists();
           console.log('Config exists:', configExists);
 
@@ -51,14 +60,17 @@ const AppContent: React.FC = () => {
             setShowSetupWizard(true);
           }
         } catch (error) {
-          console.error('Error checking config:', error);
+          console.error('Error initializing Tauri backend or checking config:', error);
         }
       } else {
-        console.log('Not in Tauri mode - skipping setup wizard check');
+        console.log('Not in Tauri mode - skipping backend initialization and setup wizard check');
       }
+
+      // Mark backend as ready (either Tauri initialized or web mode)
+      setBackendReady(true);
     };
 
-    checkFirstRun();
+    initializeTauriAndCheckSetup();
   }, []);
 
   const handleSetupComplete = () => {
@@ -94,9 +106,15 @@ const AppContent: React.FC = () => {
   });
 
   useEffect(() => {
+    // Only fetch agent metadata after backend is ready
+    if (!backendReady) {
+      console.log('Waiting for backend to be ready before fetching metadata...');
+      return;
+    }
+
     const fetchAgentMetadata = async () => {
       try {
-        console.log('Fetching agent metadata...');
+        console.log('Backend ready, fetching agent metadata...');
         const metadata = await api.getAgentCard();
         console.log('Agent metadata fetched:', metadata);
         setAgentMetadata(metadata);
@@ -118,7 +136,7 @@ const AppContent: React.FC = () => {
     };
 
     fetchAgentMetadata();
-  }, []);
+  }, [backendReady]);
 
   const handleAgentMetadataUpdate = (metadata: AgentMetadata) => {
     setAgentMetadata(metadata);
