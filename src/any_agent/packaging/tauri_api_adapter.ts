@@ -90,3 +90,38 @@ export async function getBackendURL(): Promise<string> {
 export function isTauriEnvironment(): boolean {
   return !!window.__TAURI__;
 }
+
+/**
+ * Open an external URL in the default browser.
+ * In Tauri, this uses the shell plugin to open URLs securely.
+ * In browser mode, uses window.open.
+ */
+export async function openExternal(url: string): Promise<void> {
+  console.log('[openExternal] Attempting to open URL:', url);
+
+  if (window.__TAURI__) {
+    try {
+      // Tauri v2 shell plugin - try with 'url' parameter first
+      console.log('[openExternal] Using Tauri shell plugin');
+      await window.__TAURI__.invoke('plugin:shell|open', { url: url });
+      console.log('[openExternal] Successfully opened URL via Tauri');
+    } catch (error) {
+      console.error('[openExternal] Failed to open with Tauri shell (trying path param):', error);
+
+      // Try with 'path' parameter as fallback
+      try {
+        await window.__TAURI__.invoke('plugin:shell|open', { path: url });
+        console.log('[openExternal] Successfully opened URL via Tauri (path param)');
+      } catch (error2) {
+        console.error('[openExternal] Failed to open with Tauri shell (path param):', error2);
+        // Final fallback to window.open
+        console.log('[openExternal] Falling back to window.open');
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    }
+  } else {
+    // Browser mode
+    console.log('[openExternal] Using window.open (browser mode)');
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+}

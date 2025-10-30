@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Drawer,
   List,
@@ -12,6 +12,7 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import { Link, useLocation } from 'react-router-dom';
+import { getBackendURL, openExternal } from '@/utils/tauri_api_adapter';
 
 interface NavigationProps {
   open: boolean;
@@ -30,11 +31,36 @@ const Navigation: React.FC<NavigationProps> = ({ open, onClose }) => {
   const theme = useTheme();
   const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  
+  const [backendURL, setBackendURL] = useState<string>('');
+
   const drawerWidth = isMobile ? 250 : 300;
+
+  // Fetch backend URL on mount
+  useEffect(() => {
+    const fetchBackendURL = async () => {
+      try {
+        const url = await getBackendURL();
+        setBackendURL(url);
+      } catch (error) {
+        console.error('Failed to get backend URL:', error);
+        setBackendURL(''); // Fallback to relative URLs
+      }
+    };
+    fetchBackendURL();
+  }, []);
 
   const handleLinkClick = () => {
     onClose();
+  };
+
+  const handleExternalLinkClick = async (path: string) => {
+    try {
+      const url = backendURL ? `${backendURL}${path}` : path;
+      await openExternal(url);
+      onClose();
+    } catch (error) {
+      console.error('Failed to open external link:', error);
+    }
   };
 
   const drawerContent = (
@@ -60,19 +86,18 @@ const Navigation: React.FC<NavigationProps> = ({ open, onClose }) => {
       </Typography>
       
       <List sx={{ p: 0 }}>
-        {navigationItems.map((item) => (
+        {navigationItems.map((item) => {
+          return (
           <ListItem key={item.text} sx={{ p: 0 }}>
             <ListItemButton
-              component={item.external ? 'a' : Link}
+              component={item.external ? 'div' : Link}
               to={item.external ? undefined : item.path}
-              href={item.external ? item.path : undefined}
-              target={item.external ? '_blank' : undefined}
-              rel={item.external ? 'noopener noreferrer' : undefined}
-              onClick={handleLinkClick}
+              onClick={item.external ? () => handleExternalLinkClick(item.path) : handleLinkClick}
               sx={{
                 py: 1,
                 px: 0,
                 borderBottom: `1px solid ${theme.palette.divider}`,
+                cursor: 'pointer',
                 '&:hover': {
                   backgroundColor: 'transparent',
                   '& .MuiListItemText-primary': {
@@ -99,7 +124,8 @@ const Navigation: React.FC<NavigationProps> = ({ open, onClose }) => {
               />
             </ListItemButton>
           </ListItem>
-        ))}
+          );
+        })}
       </List>
     </Box>
   );

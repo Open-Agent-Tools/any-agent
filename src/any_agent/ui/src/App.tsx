@@ -82,7 +82,7 @@ const AppContent: React.FC = () => {
   const hasForceChat = location.search.includes('force_chat=true');
   const isSettingsPage = currentPath === '/settings';
   const isExplicitlyDescribe = currentPath === '/describe' && !hasForceChat;
-  const shouldShowDescription = false; // Temporarily force chat interface
+  const shouldShowDescription = isExplicitlyDescribe;
 
   console.log('PATH DEBUG:', {
     currentPath,

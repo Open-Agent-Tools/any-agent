@@ -334,16 +334,28 @@ class MacAppPackager:
         tauri_path = agent_path / ".any_agent" / "tauri-app"
         tauri_path.mkdir(parents=True, exist_ok=True)
 
+        # Determine backend port based on framework
+        framework_name = framework_result["framework_name"].lower()
+        if "google" in framework_name or "adk" in framework_name:
+            backend_port = 8035
+        elif "aws" in framework_name or "strands" in framework_name:
+            backend_port = 8045
+        else:
+            backend_port = 8080  # Default fallback
+
+        # Add port to metadata
+        metadata_with_port = {**metadata, "port": backend_port}
+
         # Save manifest
         manifest_path = agent_path / ".any_agent" / "package-manifest.json"
         with open(manifest_path, "w") as f:
-            json.dump(metadata, f, indent=2)
+            json.dump(metadata_with_port, f, indent=2)
 
         # Generate Tauri project with bundled agent sidecar
         generator = TauriProjectGenerator()
         result = generator.generate_project(
             tauri_path=tauri_path,
-            metadata=metadata,
+            metadata=metadata_with_port,
             agent_path=agent_path,
             bundle_agent=True,  # Enable PyInstaller sidecar
             framework=framework_result["framework_name"],

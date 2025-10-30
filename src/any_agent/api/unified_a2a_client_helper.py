@@ -67,7 +67,11 @@ class UnifiedA2AClientHelper:
                 "a2a-sdk not available - install with: pip install a2a-sdk>=0.1.0"
             )
 
-        async with httpx.AsyncClient(timeout=self.timeout) as httpx_client:
+        # Create httpx client with explicit headers to avoid compression issues
+        headers = {"Accept-Encoding": "identity"}  # Disable compression
+        async with httpx.AsyncClient(
+            timeout=self.timeout, headers=headers, follow_redirects=True
+        ) as httpx_client:
             # Step 1: Fetch Agent Card using A2ACardResolver (official pattern)
             logger.info(f"Fetching agent card from: {agent_url}")
             resolver = A2ACardResolver(httpx_client=httpx_client, base_url=agent_url)

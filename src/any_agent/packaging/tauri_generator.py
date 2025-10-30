@@ -319,22 +319,44 @@ class TauriProjectGenerator:
         with open(api_file, "r") as f:
             content = f.read()
 
-        # Replace API_BASE_URL with dynamic version
+        # Replace API_BASE_URL with dynamic version that properly awaits port discovery
         modified_content = content.replace(
             "const API_BASE_URL = '';",
-            """import { isTauriEnvironment, initializeTauriBackend } from './tauri_api_adapter';
+            """import { isTauriEnvironment, getBackendURL } from './tauri_api_adapter';
 
-let API_BASE_URL = '';
-
-// Initialize backend URL discovery for Tauri
-if (isTauriEnvironment()) {
-  initializeTauriBackend().then(port => {
-    API_BASE_URL = `http://localhost:${port}`;
-    console.log('Tauri backend port discovered:', port);
-  }).catch(error => {
-    console.error('Failed to discover backend port:', error);
-  });
+// Helper to get the API base URL (handles async Tauri port discovery)
+async function getApiBaseUrl(): Promise<string> {
+  if (isTauriEnvironment()) {
+    return await getBackendURL();
+  }
+  return ''; // Empty string for relative URLs in web context
 }""",
+        )
+
+        # Update all API methods to await the base URL
+        # Replace pattern: `fetch(`${API_BASE_URL}` with `const API_BASE_URL = await getApiBaseUrl(); fetch(`${API_BASE_URL}`
+        api_methods = [
+            'async getAgentCard(): Promise<AgentMetadata> {',
+            'async healthCheck(): Promise<ApiResponse> {',
+            'async createChatSession(sessionId: string): Promise<ChatCreateSessionResponse> {',
+            'async sendMessage(sessionId: string, message: string): Promise<ChatSendMessageResponse> {',
+            'async cleanupSession(sessionId: string): Promise<void> {',
+            'async cancelTask(sessionId: string): Promise<ChatCancelTaskResponse> {',
+        ]
+
+        for method in api_methods:
+            # Find the method and inject API_BASE_URL = await getApiBaseUrl()
+            if method in modified_content:
+                # Add the await call right after the method signature
+                modified_content = modified_content.replace(
+                    method,
+                    method + '\n    const API_BASE_URL = await getApiBaseUrl();'
+                )
+
+        # Fix cleanupSessionBeacon signature to be async
+        modified_content = modified_content.replace(
+            'cleanupSessionBeacon(sessionId: string): void {',
+            'async cleanupSessionBeacon(sessionId: string): Promise<void> {\n    const API_BASE_URL = await getApiBaseUrl();'
         )
 
         # Write modified content
@@ -414,6 +436,19 @@ if (isTauriEnvironment()) {
                 "beforeBuildCommand": "npm run build",
                 "frontendDist": "../dist"
             },
+            "app": {
+                "windows": [
+                    {
+                        "title": metadata["app_name"],
+                        "width": 1200,
+                        "height": 800,
+                        "resizable": True,
+                        "fullscreen": False,
+                        "devtools": True  # Enable devtools in release builds
+                    }
+                ],
+                "withGlobalTauri": True
+            },
             "bundle": {
                 "active": True,
                 "targets": "all",
@@ -478,10 +513,13 @@ fn main() {
         app_name = metadata["app_name"]
         sidecar_name = metadata.get("sidecar_name")
 
+        # Determine backend port based on framework
+        backend_port = metadata.get("port", 8080)  # Default to 8080 if not in metadata
+
         # Generate different backend startup code based on sidecar availability
         if sidecar_name:
             backend_setup = f"""
-            // Start agent sidecar
+            // Start agent sidecar and manage its lifecycle
             use tauri_plugin_shell::ShellExt;
             let shell = app.shell();
 
@@ -494,15 +532,17 @@ fn main() {
                     e
                 }})?;
 
-            let (_rx, _child) = sidecar_command.spawn()
+            let (_rx, child) = sidecar_command.spawn()
                 .map_err(|e| {{
                     eprintln!("Failed to spawn sidecar: {{}}", e);
                     e
                 }})?;
 
-            eprintln!("Agent sidecar started successfully");
+            // Store child process handle in app state to keep it alive
+            // When app exits, Tauri will drop this state and kill the process
+            app.manage(child);
 
-            // Note: The sidecar will be automatically terminated when the app closes
+            eprintln!("Agent sidecar started successfully");
 """
         else:
             backend_setup = """
@@ -515,6 +555,7 @@ fn main() {
 use std::fs;
 use std::path::PathBuf;
 use tauri::{{Manager, WebviewWindowBuilder, WebviewUrl}};
+use tauri::menu::{{Menu, MenuItem, PredefinedMenuItem, Submenu}};
 use serde_json::{{Value, json}};
 
 // Config management commands
@@ -596,6 +637,13 @@ fn write_config(config: Value) -> Result<(), String> {{
     Ok(())
 }}
 
+// Backend port discovery for frontend A2A client
+#[tauri::command]
+fn get_backend_port() -> u16 {{
+    // Return the agent backend port (framework-specific)
+    {backend_port}
+}}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {{
     tauri::Builder::default()
@@ -604,26 +652,36 @@ pub fn run() {{
             get_config_path,
             config_exists,
             read_config,
-            write_config
+            write_config,
+            get_backend_port
         ])
         .setup(|app| {{
-            // Create the main window with explicit visibility
-            let _window = WebviewWindowBuilder::new(
+            // Create menu with Developer Tools option
+            let view_menu = Submenu::with_items(
                 app,
-                "main",
-                WebviewUrl::App("index.html".into())
-            )
-            .title("{app_name}")
-            .inner_size(1200.0, 800.0)
-            .resizable(true)
-            .visible(true)
-            .center()
-            .focused(true)
-            .build()
-            .map_err(|e| {{
-                eprintln!("Failed to create window: {{}}", e);
-                e
-            }})?;
+                "View",
+                true,
+                &[
+                    &MenuItem::with_id(app, "dev_tools", "Developer Tools", true, Some("CmdOrCtrl+Shift+I"))?
+                ]
+            )?;
+
+            let menu = Menu::with_items(
+                app,
+                &[
+                    &PredefinedMenuItem::about(app, None, None)?,
+                    &view_menu
+                ]
+            )?;
+
+            // Set the application-level menu (for macOS menu bar)
+            app.set_menu(menu)?;
+
+            // Handle menu events
+            app.on_menu_event(move |_app_handle, _event| {{
+                // DevTools are enabled via configuration and keyboard shortcut (Cmd+Shift+I)
+                // The menu item serves as a visual reminder of the shortcut
+            }});
 
             {backend_setup}
 
