@@ -5,14 +5,27 @@ import {
   ChatCancelTaskResponse,
   ApiResponse,
 } from '@/types';
+import { isTauriEnvironment, getBackendURL } from '@/utils/tauri_api_adapter';
 
-const API_BASE_URL = '';
+// Dynamic API base URL - returns backend URL in Tauri mode, empty string for browser mode
+async function getApiBaseUrl(): Promise<string> {
+  if (isTauriEnvironment()) {
+    try {
+      return await getBackendURL();
+    } catch (error) {
+      console.error('Failed to get backend URL in Tauri mode:', error);
+      return 'http://localhost:8035'; // Fallback to default port
+    }
+  }
+  return ''; // Browser mode - use relative URLs
+}
 
 export const api = {
   // Agent metadata
   async getAgentCard(): Promise<AgentMetadata> {
     try {
-      const response = await fetch(`${API_BASE_URL}/.well-known/agent-card.json`);
+      const baseUrl = await getApiBaseUrl();
+      const response = await fetch(`${baseUrl}/.well-known/agent-card.json`);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
@@ -38,7 +51,8 @@ export const api = {
 
   // Health check
   async healthCheck(): Promise<ApiResponse> {
-    const response = await fetch(`${API_BASE_URL}/health`);
+    const baseUrl = await getApiBaseUrl();
+    const response = await fetch(`${baseUrl}/health`);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
@@ -51,7 +65,8 @@ export const api = {
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
     try {
-      const response = await fetch(`${API_BASE_URL}/chat/create-session`, {
+      const baseUrl = await getApiBaseUrl();
+      const response = await fetch(`${baseUrl}/chat/create-session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -75,7 +90,8 @@ export const api = {
   },
 
   async sendMessage(sessionId: string, message: string): Promise<ChatSendMessageResponse> {
-    const response = await fetch(`${API_BASE_URL}/chat/send-message`, {
+    const baseUrl = await getApiBaseUrl();
+    const response = await fetch(`${baseUrl}/chat/send-message`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -93,7 +109,8 @@ export const api = {
 
   async cleanupSession(sessionId: string): Promise<void> {
     try {
-      await fetch(`${API_BASE_URL}/chat/cleanup-session`, {
+      const baseUrl = await getApiBaseUrl();
+      await fetch(`${baseUrl}/chat/cleanup-session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: sessionId }),
@@ -104,7 +121,8 @@ export const api = {
   },
 
   async cancelTask(sessionId: string): Promise<ChatCancelTaskResponse> {
-    const response = await fetch(`${API_BASE_URL}/chat/cancel-task`, {
+    const baseUrl = await getApiBaseUrl();
+    const response = await fetch(`${baseUrl}/chat/cancel-task`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: sessionId }),
@@ -118,9 +136,10 @@ export const api = {
   },
 
   // Beacon cleanup for page unload
-  cleanupSessionBeacon(sessionId: string): void {
+  async cleanupSessionBeacon(sessionId: string): Promise<void> {
+    const baseUrl = await getApiBaseUrl();
     navigator.sendBeacon(
-      `${API_BASE_URL}/chat/cleanup-session`,
+      `${baseUrl}/chat/cleanup-session`,
       JSON.stringify({ session_id: sessionId })
     );
   },

@@ -309,59 +309,14 @@ class TauriProjectGenerator:
             shutil.copy(index_css, tauri_path / "src" / "index.css")
 
     def _modify_api_for_tauri(self, tauri_path: Path) -> None:
-        """Modify api.ts to use Tauri backend port discovery."""
-        api_file = tauri_path / "src" / "utils" / "api.ts"
+        """Modify api.ts to use Tauri backend port discovery.
 
-        if not api_file.exists():
-            return
-
-        # Read original api.ts
-        with open(api_file, "r") as f:
-            content = f.read()
-
-        # Replace API_BASE_URL with dynamic version that properly awaits port discovery
-        modified_content = content.replace(
-            "const API_BASE_URL = '';",
-            """import { isTauriEnvironment, getBackendURL } from './tauri_api_adapter';
-
-// Helper to get the API base URL (handles async Tauri port discovery)
-async function getApiBaseUrl(): Promise<string> {
-  if (isTauriEnvironment()) {
-    return await getBackendURL();
-  }
-  return ''; // Empty string for relative URLs in web context
-}""",
-        )
-
-        # Update all API methods to await the base URL
-        # Replace pattern: `fetch(`${API_BASE_URL}` with `const API_BASE_URL = await getApiBaseUrl(); fetch(`${API_BASE_URL}`
-        api_methods = [
-            'async getAgentCard(): Promise<AgentMetadata> {',
-            'async healthCheck(): Promise<ApiResponse> {',
-            'async createChatSession(sessionId: string): Promise<ChatCreateSessionResponse> {',
-            'async sendMessage(sessionId: string, message: string): Promise<ChatSendMessageResponse> {',
-            'async cleanupSession(sessionId: string): Promise<void> {',
-            'async cancelTask(sessionId: string): Promise<ChatCancelTaskResponse> {',
-        ]
-
-        for method in api_methods:
-            # Find the method and inject API_BASE_URL = await getApiBaseUrl()
-            if method in modified_content:
-                # Add the await call right after the method signature
-                modified_content = modified_content.replace(
-                    method,
-                    method + '\n    const API_BASE_URL = await getApiBaseUrl();'
-                )
-
-        # Fix cleanupSessionBeacon signature to be async
-        modified_content = modified_content.replace(
-            'cleanupSessionBeacon(sessionId: string): void {',
-            'async cleanupSessionBeacon(sessionId: string): Promise<void> {\n    const API_BASE_URL = await getApiBaseUrl();'
-        )
-
-        # Write modified content
-        with open(api_file, "w") as f:
-            f.write(modified_content)
+        NOTE: This method is now a no-op since the source file src/any_agent/ui/src/utils/api.ts
+        already has the correct dynamic backend URL implementation built-in.
+        The API file now uses getApiBaseUrl() helper function that's defined at the module level.
+        """
+        # Source file is already correct - no post-processing needed
+        pass
 
     def _process_icon(self, tauri_path: Path, icon_path: Path) -> None:
         """
@@ -558,7 +513,7 @@ fn main() {
         lib_rs = f"""// Tauri v2 application library
 use std::fs;
 use std::path::PathBuf;
-use tauri::{{Manager, WebviewWindowBuilder, WebviewUrl}};
+use tauri::{{Manager, WebviewWindowBuilder, WebviewUrl, RunEvent}};
 use tauri::menu::{{Menu, MenuItem, PredefinedMenuItem, Submenu}};
 use serde_json::{{Value, json}};
 
@@ -575,25 +530,24 @@ impl SidecarProcessManager {{
             pid,
         }}
     }}
-}}
 
-impl Drop for SidecarProcessManager {{
-    fn drop(&mut self) {{
-        eprintln!("SidecarProcessManager dropping - cleaning up process PID: {{}}", self.pid);
+    // Explicit cleanup method to be called before app exit
+    fn cleanup(&self) {{
+        eprintln!("[CLEANUP] Explicit sidecar cleanup called for PID: {{}}", self.pid);
 
         if let Ok(mut child_guard) = self.child.lock() {{
             if let Some(mut child_proc) = child_guard.take() {{
-                eprintln!("Attempting to kill sidecar process (PID: {{}})...", self.pid);
+                eprintln!("[CLEANUP] Killing sidecar process (PID: {{}})...", self.pid);
 
                 // Try graceful kill first
                 match child_proc.kill() {{
                     Ok(_) => {{
-                        eprintln!("Successfully sent kill signal to sidecar");
+                        eprintln!("[CLEANUP] Successfully sent kill signal to sidecar");
                         // Give it a moment to terminate
-                        std::thread::sleep(std::time::Duration::from_millis(500));
+                        std::thread::sleep(std::time::Duration::from_millis(300));
                     }},
                     Err(e) => {{
-                        eprintln!("Failed to kill sidecar gracefully: {{}}", e);
+                        eprintln!("[CLEANUP] Failed to kill sidecar gracefully: {{}}", e);
                     }}
                 }}
 
@@ -601,17 +555,27 @@ impl Drop for SidecarProcessManager {{
                 #[cfg(unix)]
                 {{
                     use std::process::Command;
-                    eprintln!("Sending SIGKILL to PID {{}} as fallback...", self.pid);
+                    eprintln!("[CLEANUP] Sending SIGKILL to PID {{}} as fallback...", self.pid);
                     let _ = Command::new("kill")
                         .args(["-9", &self.pid.to_string()])
                         .output();
+                    std::thread::sleep(std::time::Duration::from_millis(200));
                 }}
+
+                eprintln!("[CLEANUP] Sidecar process cleanup complete");
+            }} else {{
+                eprintln!("[CLEANUP] Sidecar process already cleaned up");
             }}
         }} else {{
-            eprintln!("Failed to acquire lock on child process during cleanup");
+            eprintln!("[CLEANUP] Failed to acquire lock on child process during cleanup");
         }}
+    }}
+}}
 
-        eprintln!("Sidecar cleanup complete");
+impl Drop for SidecarProcessManager {{
+    fn drop(&mut self) {{
+        eprintln!("[DROP] SidecarProcessManager drop() called - this is a fallback cleanup");
+        self.cleanup();
     }}
 }}
 
@@ -744,8 +708,30 @@ pub fn run() {{
 
             Ok(())
         }})
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {{
+            // Handle app lifecycle events for explicit cleanup
+            match event {{
+                RunEvent::ExitRequested {{ api, .. }} => {{
+                    eprintln!("[EXIT] Exit requested - performing explicit sidecar cleanup...");
+
+                    // Get the process manager and explicitly cleanup before exit
+                    if let Some(process_manager) = app_handle.try_state::<SidecarProcessManager>() {{
+                        process_manager.cleanup();
+                        eprintln!("[EXIT] Explicit cleanup complete, allowing app to exit");
+                    }} else {{
+                        eprintln!("[EXIT] No process manager found (UI-only mode or already cleaned up)");
+                    }}
+
+                    // Allow the app to exit
+                    // api.prevent_exit(); // Don't call this - we want to allow exit after cleanup
+                }},
+                _ => {{
+                    // Ignore other events
+                }}
+            }}
+        }});
 }}
 """
         lib_rs_path = tauri_path / "src-tauri" / "src" / "lib.rs"
