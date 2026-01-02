@@ -114,7 +114,7 @@ def test_cli_version_flag():
     result = runner.invoke(main, ["--version"])
 
     assert result.exit_code == 0
-    assert "0.2.9" in result.output
+    assert "0.2.10" in result.output
 
 
 def test_cli_protocol_specification():

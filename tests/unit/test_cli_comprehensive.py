@@ -311,7 +311,7 @@ class TestCLIComprehensiveCoverage:
 
         # Should display version and exit successfully
         assert result.exit_code == 0
-        assert "0.2.9" in result.output
+        assert "0.2.10" in result.output
 
     def test_cli_base_image_option(self):
         """Test CLI with custom base image option."""

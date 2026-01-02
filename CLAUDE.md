@@ -18,7 +18,7 @@
 ## Project: Any Agent
 Universal AI agent containerization framework. Wraps agents from any framework (ADK, Strands, LangChain) into A2A protocol-compliant Docker containers with React SPAs.
 
-**Status**: PyPI published as `any-agent-wrapper` v0.2.0 (381 tests passing)
+**Status**: PyPI published as `any-agent-wrapper` v0.2.10 (389 tests passing)
 
 ## Architecture
 3-layer: Detection & Adaptation → Protocol Layer (A2A, OpenAI, WebSocket) → Containerization

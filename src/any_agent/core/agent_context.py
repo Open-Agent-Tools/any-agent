@@ -2,7 +2,7 @@
 
 import yaml
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field, asdict
@@ -87,7 +87,7 @@ class AgentBuildContext:
 
     def __post_init__(self):
         if not self.build_timestamp:
-            self.build_timestamp = datetime.utcnow().isoformat()
+            self.build_timestamp = datetime.now(UTC).isoformat()
 
     def get_effective_agent_name(self) -> str:
         """Get the effective agent name (custom name if provided, otherwise detected name)."""
