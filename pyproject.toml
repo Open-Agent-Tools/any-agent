@@ -124,6 +124,7 @@ packages = ["src/any_agent"]
 exclude = [
     "src/any_agent/ui/node_modules/",
     "src/any_agent/ui/src/",
+    "src/any_agent/ui/dist/",
     "src/any_agent/ui/package*.json",
     "src/any_agent/ui/tsconfig*.json",
     "src/any_agent/ui/vite.config.ts",
