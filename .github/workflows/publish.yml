@@ -30,13 +30,24 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install build hatch
-    
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Build UI
+      run: |
+        cd src/any_agent/ui
+        npm install
+        npm run build
+
     - name: Clean build artifacts
       run: |
         rm -rf dist/ build/ *.egg-info/
         find . -name "*.pyc" -delete
         find . -name "__pycache__" -type d -exec rm -rf {} + || true
-    
+
     - name: Build package
       run: python -m build
     
